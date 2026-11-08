@@ -49,7 +49,7 @@ export const AI_PROVIDER_ORIGIN = {
 export const AI_PROVIDER_KEY_URL = {
   [AI_PROVIDERS.gemini]: 'https://aistudio.google.com/apikey',
   [AI_PROVIDERS.groq]: 'https://console.groq.com/keys',
-  [AI_PROVIDERS.openRouter]: 'https://openrouter.ai/settings/keys',
+  [AI_PROVIDERS.openRouter]: 'https://openrouter.ai/workspaces/default/keys',
 }
 
 export const REWRITE_STYLES = Object.freeze({

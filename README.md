@@ -74,7 +74,26 @@ The local engines fix mistakes but keep your wording. **Rewrite with AI** goes f
 |----------|---------------|-----------------------|
 | Google Gemini | `gemini-3.6-flash` | https://aistudio.google.com/apikey |
 | Groq | `openai/gpt-oss-120b` | https://console.groq.com/keys |
-| OpenRouter | `liquid/lfm-3-1.7b:free` | https://openrouter.ai/settings/keys |
+| OpenRouter | `liquid/lfm-3-1.7b:free` | https://openrouter.ai/workspaces/default/keys |
+
+### Recommended for a free key: OpenRouter
+
+To try AI rewriting without paying, use OpenRouter. Create a key at **https://openrouter.ai/workspaces/default/keys** and use a model whose name ends in `:free`. Those models cost nothing. OpenRouter only serves them to accounts whose privacy settings allow free models, and it limits how often they can be called, so a request can occasionally be refused when you send many in a row.
+
+These free models work with WriteBetter. All of them were listed as free on OpenRouter, with JSON output support, on 2026-11-08:
+
+| Model | Name on OpenRouter | Context |
+|-------|--------------------|---------|
+| `liquid/lfm-3-1.7b:free` | LiquidAI LFM3-1.7B. The default: the smallest and fastest | 262K |
+| `google/gemma-4-31b-it:free` | Google Gemma 4 31B | 262K |
+| `google/gemma-4-26b-a4b-it:free` | Google Gemma 4 26B A4B | 262K |
+| `nvidia/nemotron-3.5-super-vl:free` | NVIDIA Nemotron 3.5 Super VL | 1M |
+| `xingchen-agi/xing4.0-29b-a4b:free` | XingChen Xing4.0 29B A4B | 262K |
+| `dots-studio/dots-3-note-preview:free` | Dots Studio Dots3-Note Preview | 512K |
+| `recursive/flint-v1.0:free` | Recursive Flint | 262K |
+| `liquid/lfm-2.5-2.6b:free` | LiquidAI LFM2.5-2.6B | 65K |
+
+The default model is the quickest. If its rewrites are too plain, try a larger model such as `google/gemma-4-31b-it:free`. Clicking the model field in Settings offers this same list. Free models come and go: browse the current ones at https://openrouter.ai/models?max_price=0. Any other model works too, as long as it supports JSON output.
 
 1. Open **Settings → AI rewriting**, choose the provider, paste the key and press **Save**. Leave the model empty to use the default, or type another model name there. For OpenRouter, clicking the field suggests free models that can rewrite.
 2. In the popup, pick a style next to **Rewrite with AI** (Improve wording, Make professional, Make polite, Make concise, Make friendly or Improve clarity) and press the button. While there is no key, the button's neighbour says **Set up** and opens Settings.
