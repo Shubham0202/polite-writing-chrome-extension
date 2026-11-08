@@ -1,0 +1,281 @@
+/* Only Tailwind's theme is imported: the colours match the popup, with no base styles or utilities in the page. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "../styles/brandTheme.css";
+
+/* Sizes are in px because rem follows the root font size of whatever site this runs on. */
+:host {
+  --wb-card-width: 320px;
+  --wb-radius: 8px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.wb-mirror {
+  position: fixed;
+  top: 0;
+  left: 0;
+  margin: 0;
+  border: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.wb-status {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.wb-underlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.wb-underline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 0;
+  border-bottom: 2px solid;
+}
+
+.wb-underline--spelling {
+  border-bottom-color: var(--color-rose-500);
+}
+
+.wb-underline--grammar {
+  border-bottom-style: dashed;
+  border-bottom-color: var(--color-amber-500);
+}
+
+.wb-underline--tense {
+  border-bottom-style: dashed;
+  border-bottom-color: var(--color-sky-500);
+}
+
+.wb-underline--tone {
+  border-bottom-color: var(--color-brand-500);
+}
+
+.wb-underline--uncertain {
+  border-bottom-style: dotted;
+}
+
+.wb-underline--active {
+  border-bottom-width: 3px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 1px;
+}
+
+.wb-badge {
+  position: fixed;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--color-white);
+  background: var(--color-brand-600);
+  font: 600 12px/24px var(--font-sans);
+  pointer-events: auto;
+}
+
+.wb-badge:hover {
+  background: var(--color-brand-700);
+}
+
+.wb-toast {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 12px;
+  border-radius: var(--wb-radius);
+  color: var(--color-white);
+  background: var(--color-slate-900);
+  box-shadow: 0 4px 12px rgb(15 23 42 / 0.24);
+  font: 13px/1.4 var(--font-sans);
+  pointer-events: auto;
+}
+
+.wb-card {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  width: var(--wb-card-width);
+  max-width: calc(100vw - 16px);
+  padding: 12px;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 12px;
+  color: var(--color-slate-900);
+  background: var(--color-white);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.16);
+  font: 14px/1.4 var(--font-sans);
+  pointer-events: auto;
+}
+
+/* The list holds every suggestion, so it is wider and scrolls instead of growing past the viewport. */
+.wb-card--list {
+  width: 480px;
+  max-height: min(60vh, 440px);
+  overflow-y: auto;
+}
+
+.wb-card__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-slate-200);
+}
+
+.wb-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-slate-600);
+  font-size: 12px;
+}
+
+.wb-card__label {
+  font-weight: 600;
+}
+
+.wb-card__change {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.wb-card__change del {
+  color: var(--color-rose-700);
+}
+
+.wb-card__change ins {
+  color: var(--color-emerald-700);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.wb-card__arrow {
+  margin: 0 4px;
+  color: var(--color-slate-500);
+}
+
+.wb-card__placeholder {
+  color: var(--color-slate-600);
+}
+
+.wb-card__explanation {
+  margin: 0;
+  color: var(--color-slate-600);
+  font-size: 12px;
+}
+
+.wb-card__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wb-button {
+  padding: 4px 10px;
+  border: 1px solid var(--color-slate-300);
+  border-radius: var(--wb-radius);
+  color: var(--color-slate-700);
+  background: var(--color-white);
+  font-size: 13px;
+}
+
+.wb-button:hover {
+  background: var(--color-slate-50);
+}
+
+.wb-button--primary {
+  border-color: var(--color-brand-600);
+  color: var(--color-white);
+  background: var(--color-brand-600);
+}
+
+.wb-button--primary:hover {
+  background: var(--color-brand-700);
+}
+
+.wb-button[aria-pressed='true'] {
+  border-color: var(--color-brand-500);
+  color: var(--color-brand-700);
+  background: var(--color-brand-50);
+}
+
+/* The AI rewrite's loader, and what it has to say once it is done. */
+.wb-card__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-slate-600);
+  font-size: 13px;
+}
+
+.wb-spinner {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-brand-100);
+  border-top-color: var(--color-brand-600);
+  border-radius: 50%;
+  animation: wb-spin 0.8s linear infinite;
+}
+
+@keyframes wb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-spinner {
+    animation-duration: 2s;
+  }
+}
+
+@media (forced-colors: active) {
+  .wb-underline {
+    border-bottom-color: Highlight;
+  }
+
+  .wb-card {
+    border-color: CanvasText;
+  }
+
+  .wb-badge,
+  .wb-toast,
+  .wb-button {
+    border: 1px solid ButtonText;
+  }
+}

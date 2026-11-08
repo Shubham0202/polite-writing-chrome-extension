@@ -1,0 +1,90 @@
+import SwitchField from '../components/SwitchField.jsx'
+import { useSettings } from '../hooks/useSettings.js'
+import AiSettingsForm from './components/AiSettingsForm.jsx'
+import AiShortcutSettings from './components/AiShortcutSettings.jsx'
+import DelayField from './components/DelayField.jsx'
+import IgnoredWordList from './components/IgnoredWordList.jsx'
+import PrivacySummary from './components/PrivacySummary.jsx'
+import SettingsSection from './components/SettingsSection.jsx'
+import SiteList from './components/SiteList.jsx'
+import { useAiSettings } from './hooks/useAiSettings.js'
+import { useCustomSites } from './hooks/useCustomSites.js'
+import { useIgnoredWords } from './hooks/useIgnoredWords.js'
+
+const CHECK_SWITCHES = [
+  { key: 'isSpellingEnabled', label: 'Spelling' },
+  { key: 'isGrammarEnabled', label: 'Grammar and tense' },
+  { key: 'isPoliteEnabled', label: 'Polite rewrites' },
+  { key: 'isProfessionalEnabled', label: 'Professional rewrites' },
+]
+
+const Options = () => {
+  const { settings, updateSettings } = useSettings()
+  const ignoredWords = useIgnoredWords()
+  const aiSettings = useAiSettings()
+  const { error, addSite, removeSite } = useCustomSites(settings)
+
+  if (!settings) return null
+
+  const handleDelayChange = (delayMs) => updateSettings({ delayMs })
+
+  return (
+    <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6 font-sans text-slate-900">
+      <header>
+        <h1 className="text-lg font-semibold">WriteBetter settings</h1>
+        <p className="text-sm text-slate-500">These control the suggestions on websites and the optional AI rewriting in the popup. The popup buttons always run every check.</p>
+      </header>
+
+      <SettingsSection title="Inline suggestions">
+        <SwitchField
+          id="setting-isInlineEnabled"
+          label="Show suggestions on websites"
+          description="Turn off to pause everywhere. The popup has the same switch."
+          checked={settings.isInlineEnabled}
+          onChange={(isInlineEnabled) => updateSettings({ isInlineEnabled })}
+        />
+        {CHECK_SWITCHES.map(({ key, label }) => (
+          <SwitchField
+            key={key}
+            id={`setting-${key}`}
+            label={label}
+            checked={settings[key]}
+            disabled={!settings.isInlineEnabled}
+            onChange={(isEnabled) => updateSettings({ [key]: isEnabled })}
+          />
+        ))}
+        <DelayField delayMs={settings.delayMs} disabled={!settings.isInlineEnabled} onChange={handleDelayChange} />
+        <SwitchField
+          id="setting-isCloseOnAcceptEnabled"
+          label="Close the suggestion list after Accept"
+          description="Accepting an AI rewrite always closes the Ctrl+Shift+Space list. With this on, accepting any suggestion closes it too. The list has the same switch."
+          checked={settings.isCloseOnAcceptEnabled}
+          disabled={!settings.isInlineEnabled}
+          onChange={(isCloseOnAcceptEnabled) => updateSettings({ isCloseOnAcceptEnabled })}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Websites" description="Turn a site off to pause suggestions there.">
+        <SiteList settings={settings} error={error} onUpdate={updateSettings} onAdd={addSite} onRemove={removeSite} />
+      </SettingsSection>
+
+      <SettingsSection title="Ignored words" description="Spelling suggestions skip these words, on websites and in the popup.">
+        <IgnoredWordList words={ignoredWords} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="AI rewriting"
+        description="Optional. Adds Rewrite with AI to the popup and, if you turn it on, to the Ctrl+Shift+Space shortcut on websites, using your own API key."
+      >
+        {aiSettings && <AiSettingsForm stored={aiSettings} />}
+        <AiShortcutSettings settings={settings} onUpdate={updateSettings} />
+      </SettingsSection>
+
+      <SettingsSection title="Privacy">
+        <PrivacySummary />
+      </SettingsSection>
+    </main>
+  )
+}
+
+export default Options

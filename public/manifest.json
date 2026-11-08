@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "WriteBetter",
+  "version": "0.1.0",
+  "minimum_chrome_version": "116",
+  "description": "Local-first writing assistant: fix spelling, grammar, tense and tone without an AI key.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "WriteBetter",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "serviceWorker.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "open-suggestion": {
+      "suggested_key": { "default": "Alt+Shift+G" },
+      "description": "Open the writing suggestion at the cursor"
+    },
+    "open-all-suggestions": {
+      "suggested_key": { "default": "Ctrl+Shift+Space" },
+      "description": "Show all writing suggestions for the field"
+    }
+  },
+  "permissions": ["storage", "scripting"],
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://mail.google.com/*",
+    "https://chat.google.com/*",
+    "https://web.whatsapp.com/*",
+    "https://www.linkedin.com/*",
+    "https://*.atlassian.net/*"
+  ],
+  "optional_host_permissions": ["*://*/*"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "https://chat.google.com/*",
+        "https://web.whatsapp.com/*",
+        "https://www.linkedin.com/*",
+        "https://*.atlassian.net/*"
+      ],
+      "js": ["content.js"],
+      "all_frames": true,
+      "match_origin_as_fallback": true
+    }
+  ]
+}
