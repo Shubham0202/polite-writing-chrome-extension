@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { CATEGORY_LABEL, ENGINES, TONE_LABEL, TONES } from '../../constants/corrections.js'
 import { formatSnippet } from '../../engines/suggestion.js'
 import { getNavigationTarget } from './cardNavigation.js'

@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { ENGINES, TONES } from '../constants/corrections.js'
 import { findRewrite, getListItems, getSuggestionKey } from './suggestionState.js'
 import { CARD_ACTIONS, createSuggestionCard } from './ui/suggestionCard.js'

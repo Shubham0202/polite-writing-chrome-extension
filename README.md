@@ -193,3 +193,7 @@ src/
 | `http://localhost/*`, `http://127.0.0.1/*` | Lets the service worker reach a LanguageTool server running on this computer |
 | Optional: access to any website (`*://*/*`) | Declared as optional, so nothing is granted at install. Adding a site in Settings asks Chrome for that one site |
 | `mail.google.com`, `chat.google.com`, `web.whatsapp.com`, `www.linkedin.com`, `*.atlassian.net` | Runs the content script there and injects the suggestion UI. Password, payment, one-time-code, read-only and code-editor fields are never watched |
+
+## Author
+
+Shubham Chandgude ([shubham826852@gmail.com](mailto:shubham826852@gmail.com))

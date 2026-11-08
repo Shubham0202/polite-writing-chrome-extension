@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { ENGINES } from '../constants/corrections.js'
 import { lookup } from '../utils/lookup.js'
 import { findProtectedRanges } from '../utils/textUtils.js'

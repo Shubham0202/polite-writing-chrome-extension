@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { AI_PROVIDERS, AI_PROVIDER_LABEL, AI_PROVIDER_ORIGIN } from '../../constants/ai.js'
 import { UserFacingError } from '../../utils/errors.js'
 import { lookup } from '../../utils/lookup.js'

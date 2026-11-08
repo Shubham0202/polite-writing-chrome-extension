@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { CATEGORIES } from '../../constants/corrections.js'
 import { lookup } from '../../utils/lookup.js'
 import { matchCase } from '../../utils/textUtils.js'

@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { CORRECTION_ACTIONS, ENGINES, ENGINE_STATUS, SOURCES, TONES, TONE_LABEL } from '../constants/corrections.js'
 import { DEFAULT_SETTINGS } from '../constants/settings.js'
 import { checkWithLanguageTool } from '../engines/grammar/languageTool.js'

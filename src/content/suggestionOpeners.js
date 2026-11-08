@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { ENGINES } from '../constants/corrections.js'
 import { getVisibleBox } from './fieldLocator.js'
 import { findNearestIndex, findSuggestionAt, getReviewItems, hasReviewItems } from './suggestionState.js'

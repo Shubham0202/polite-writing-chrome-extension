@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { ENGINES, TONES } from '../constants/corrections.js'
 import { MESSAGE_TYPES, sendMessage } from '../services/messaging.js'
 import { createFieldLocator, findClippingAncestors, getVisibleBox } from './fieldLocator.js'

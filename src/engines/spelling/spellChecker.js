@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import nspell from 'nspell'
 import { CATEGORIES, CONFIDENCE, ENGINES, SOURCES } from '../../constants/corrections.js'
 import { lookup } from '../../utils/lookup.js'

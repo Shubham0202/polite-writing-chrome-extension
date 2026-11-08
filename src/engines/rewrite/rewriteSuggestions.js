@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { REWRITE_STYLES } from '../../constants/ai.js'
 import { CATEGORIES, ENGINES, SOURCES } from '../../constants/corrections.js'
 import { applyEdits } from '../../utils/diffUtils.js'

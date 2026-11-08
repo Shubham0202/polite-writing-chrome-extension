@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { CATEGORIES, CONFIDENCE, ENGINES, SOURCES } from '../../constants/corrections.js'
 import { UserFacingError } from '../../utils/errors.js'
 import { lookup } from '../../utils/lookup.js'

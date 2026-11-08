@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { FIELD_KINDS } from './fieldEligibility.js'
 import { getSiteAdapter } from './siteAdapters.js'
 

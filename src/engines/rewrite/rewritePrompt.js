@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 import { REWRITE_STYLES, REWRITE_STYLE_LABEL } from '../../constants/ai.js'
 import { UserFacingError } from '../../utils/errors.js'
 import { lookup } from '../../utils/lookup.js'

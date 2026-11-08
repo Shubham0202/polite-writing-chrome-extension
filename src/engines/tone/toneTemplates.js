@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 // Whole-sentence rewrites for common blunt or casual workplace phrases.
 // Keys are written naturally; toneEngine.js normalizes keys and input the same way (case, apostrophes,
 // contractions, final punctuation), so "I don't understand!" and "i do not understand" both match.

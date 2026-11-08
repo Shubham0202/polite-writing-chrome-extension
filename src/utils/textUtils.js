@@ -1,3 +1,5 @@
+/** @author Shubham Chandgude <shubham826852@gmail.com> */
+
 const WORD_PATTERN = /\p{L}+(?:['’]\p{L}+)*/gu
 // A sentence ends at . ! ? before whitespace, at a line break, or where a period is glued to the next sentence ("it.Thanks").
 const SENTENCE_BOUNDARY_PATTERN = /[.!?]+["'”’)\]]*(?=\s|$)|(?<=\p{Ll}{2}[.!?])(?=\p{Lu}\p{Ll})|\n/gu
