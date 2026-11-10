@@ -2,12 +2,15 @@
 
 **A privacy-first grammar checker and writing assistant for Chrome.**
 
+[![Website](https://img.shields.io/badge/website-WriteBetter-4F46E5)](https://writebetter-landing-page.vercel.app/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Chrome Manifest V3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white)
 ![Chrome 116+](https://img.shields.io/badge/Chrome-116%2B-4285F4)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 
 WriteBetter is a Chrome extension (Manifest V3) that fixes spelling, grammar, tense and tone while you write in Gmail, Google Chat, WhatsApp Web, LinkedIn and Jira, and turns casual messages into polite or professional ones. Every check runs on your computer and works offline. AI rewriting is optional and uses your own Gemini, Groq or OpenRouter API key, so it is a local-first alternative to Grammarly-style tools that send what you type to a server.
+
+🌐 **Website:** [writebetter-landing-page.vercel.app](https://writebetter-landing-page.vercel.app/)
 
 ## Contents
 
