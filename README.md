@@ -36,7 +36,7 @@ WriteBetter is a Chrome extension (Manifest V3) that fixes spelling, grammar, te
 - **Make Polite, Professional and Fix Everything:** rewrite a casual or blunt message into a polite, professional one, then review every change before you replace your text.
 - **Suggestions as you type:** on Gmail, Google Chat, WhatsApp Web, LinkedIn and Jira, with underlines, a suggestion card, Accept, Dismiss, Ignore and Undo. Works in rich-text editors, modal dialogs and shadow DOM, and you can add other sites in Settings.
 - **Keyboard shortcuts:** Alt+Shift+G opens the suggestion at the cursor, and Ctrl+Shift+Space lists every suggestion in the field.
-- **Optional AI rewriting:** with your own Google Gemini, Groq or OpenRouter key (free OpenRouter models work), in six styles: improve wording, professional, polite, concise, friendly and clearer.
+- **Optional AI rewriting:** with your own Google Gemini, Groq or OpenRouter key (free OpenRouter models work), in [six styles](#rewrite-styles): improve wording, professional, polite, concise, friendly and clarity.
 - **Optional LanguageTool:** grammar checks from a server on your computer or, if you turn it on, LanguageTool's public API.
 - **Light and dark themes:** for the popup, Settings and the suggestions on websites, or match your system.
 - **Private by default:** your text is never stored, and nothing leaves your computer unless you turn on the online grammar check or AI rewriting.
@@ -200,6 +200,23 @@ The local engines fix mistakes but keep your wording. **Rewrite with AI** goes f
 | Groq | `openai/gpt-oss-120b` | https://console.groq.com/keys |
 | OpenRouter | `liquid/lfm-3-1.7b:free` | https://openrouter.ai/workspaces/default/keys |
 
+#### Rewrite styles
+
+Choose a style next to **Rewrite with AI** in the popup, or under **Settings → Style for the shortcut** for Ctrl+Shift+Space. Both start on Improve wording.
+
+| Style | What it does | Shown on the suggestion |
+|-------|--------------|-------------------------|
+| Improve wording | Keeps your tone and changes only what sounds unnatural, awkward or incorrect | Rewritten with more natural wording. |
+| Make professional | Fits a workplace message to a colleague, client or manager: courteous, clear and confident, in plain business English | Rewritten in a professional tone. |
+| Make polite | Makes requests and statements polite and considerate, warm rather than formal or apologetic | Rewritten to sound more polite. |
+| Make concise | Makes the text as short as it can be while keeping every piece of information | Rewritten to be more concise. |
+| Make friendly | Warm and approachable, as if written to someone you get along with, without overdoing it | Rewritten in a friendlier tone. |
+| Improve clarity | One idea per sentence, precise words, a logical order and no ambiguity, in your own tone | Rewritten to be clearer. |
+
+Every style keeps your meaning, language, names, dates, numbers, links and @mentions, fixes spelling and grammar, and does not add or leave out information. Text that already reads well in the chosen style comes back unchanged.
+
+These styles are for AI rewriting. Without a key, the popup's **Make Polite** and **Professional** buttons still rewrite your text with the built-in rules.
+
 #### Recommended for a free key: OpenRouter
 
 To try AI rewriting without paying, use OpenRouter. Create a key at **https://openrouter.ai/workspaces/default/keys** and use a model whose name ends in `:free`. Those models cost nothing. OpenRouter only serves them to accounts whose privacy settings allow free models, and it limits how often they can be called, so a request can occasionally be refused when you send many in a row.
@@ -222,7 +239,7 @@ The default model is the quickest. If its rewrites are too plain, try a larger m
 #### Set it up
 
 1. Open **Settings → AI rewriting**, choose the provider, paste the key and press **Save**. Leave the model empty to use the default, or type another model name there. For OpenRouter, clicking the field suggests free models that can rewrite.
-2. In the popup, pick a style next to **Rewrite with AI** (Improve wording, Make professional, Make polite, Make concise, Make friendly or Improve clarity) and press the button. While there is no key, the button's neighbour says **Set up** and opens Settings.
+2. In the popup, pick a [style](#rewrite-styles) next to **Rewrite with AI** and press the button. While there is no key, the button's neighbour says **Set up** and opens Settings.
 3. Review the result like any correction: the original and the rewrite side by side, each change ticked or unticked, then **Copy** or **Replace input** (with **Undo**). Nothing changes until you choose to replace.
 
 What is sent, and when: only the text in the popup and the chosen style, only when you press the button, straight from the extension to the provider over HTTPS. With **Rewrite with AI from the keyboard shortcut** turned on in Settings, pressing Ctrl+Shift+Space in a field on a website also sends that field's text, in the style chosen there. Checks as you type and the other popup buttons never use it, and no extra Chrome permission is involved. The key is kept in Chrome's extension storage on this computer, is only ever sent to the provider you chose, and **Remove key** deletes it. Read the provider's terms and privacy policy before sending work messages to it.
