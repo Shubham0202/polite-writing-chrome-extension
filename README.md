@@ -1,6 +1,20 @@
 # WriteBetter
 
-A local-first Chrome extension (Manifest V3) that improves spelling, grammar, tense and tone. AI is optional and never required for core features.
+**A privacy-first grammar checker and writing assistant for Chrome.**
+
+WriteBetter is a Chrome extension (Manifest V3) that fixes spelling, grammar, tense and tone while you write in Gmail, Google Chat, WhatsApp Web, LinkedIn and Jira, and turns casual messages into polite or professional ones. Every check runs on your computer and works offline. AI rewriting is optional and uses your own Gemini, Groq or OpenRouter API key, so it is a local-first alternative to Grammarly-style tools that send what you type to a server.
+
+## Features
+
+- **Spelling, grammar and tense checking** with a bundled English dictionary and local rules. No account, no server, works offline.
+- **Make Polite, Professional and Fix Everything**: rewrite a casual or blunt message into a polite, professional one, then review every change before you replace your text.
+- **Suggestions as you type** on Gmail, Google Chat, WhatsApp Web, LinkedIn and Jira: underlines, a suggestion card, Accept, Dismiss, Ignore and Undo. Works in rich-text editors, modal dialogs and shadow DOM, and you can add other sites in Settings.
+- **Keyboard shortcuts**: Alt+Shift+G opens the suggestion at the cursor, and Ctrl+Shift+Space lists every suggestion in the field.
+- **Optional AI rewriting** with your own Google Gemini, Groq or OpenRouter key (free OpenRouter models work), in six styles: improve wording, professional, polite, concise, friendly and clearer.
+- **Optional LanguageTool** grammar checks, from a server on your computer or, if you turn it on, LanguageTool's public API.
+- **Private by default**: your text is never stored, and nothing leaves your computer unless you turn on the online grammar check or AI rewriting.
+
+To install it, build it from source and load it in Chrome: see [Setup](#setup) and [Load the extension in Chrome](#load-the-extension-in-chrome).
 
 ## Status
 
