@@ -7,7 +7,7 @@ export interface OnlineGrammarSwitchProps {
 }
 
 const OnlineGrammarSwitch = ({ isEnabled, isDisabled, onChange }: OnlineGrammarSwitchProps) => (
-  <section aria-label="Grammar source" className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+  <section aria-label="Grammar source" className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 dark:border-neutral-700 dark:bg-neutral-800">
     <SwitchField
       id="online-grammar"
       label="Online grammar check"
@@ -17,7 +17,7 @@ const OnlineGrammarSwitch = ({ isEnabled, isDisabled, onChange }: OnlineGrammarS
       description={
         <>
           Fix Grammar and Fix Everything send your text to{' '}
-          <a href="https://languagetool.org" target="_blank" rel="noreferrer" className="text-brand-700 underline">
+          <a href="https://languagetool.org" target="_blank" rel="noreferrer" className="text-brand-700 underline dark:text-brand-300">
             LanguageTool
           </a>
           . Checks as you type stay on this computer.

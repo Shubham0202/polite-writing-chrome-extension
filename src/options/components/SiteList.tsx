@@ -43,7 +43,7 @@ const SiteList = ({ settings, error, onUpdate, onAdd, onRemove }: SiteListProps)
         ))}
       </ul>
       <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
-        <label htmlFor="site-input" className="text-sm font-medium text-slate-700">
+        <label htmlFor="site-input" className="text-sm font-medium text-slate-700 dark:text-neutral-200">
           Add a website
         </label>
         <div className="flex gap-2">
@@ -53,16 +53,16 @@ const SiteList = ({ settings, error, onUpdate, onAdd, onRemove }: SiteListProps)
             onChange={handleInputChange}
             placeholder="example.com"
             aria-invalid={Boolean(error)}
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none"
+            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none dark:border-neutral-600 dark:focus:ring-brand-500/30"
           />
           <Button type="submit">Add</Button>
         </div>
         {error && (
-          <p role="alert" className="text-xs text-rose-700">
+          <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">
             {error}
           </p>
         )}
-        <p className="text-xs text-slate-500">Chrome asks for access to that site only. Reload its open tabs afterwards.</p>
+        <p className="text-xs text-slate-500 dark:text-neutral-400">Chrome asks for access to that site only. Reload its open tabs afterwards.</p>
       </form>
     </div>
   )

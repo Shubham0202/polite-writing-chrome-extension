@@ -20,7 +20,7 @@ interface TextBlockProps {
 
 const TextBlock = ({ label, text, className }: TextBlockProps) => (
   <div className="flex flex-col gap-1">
-    <h3 className="text-xs font-medium tracking-wide text-slate-500 uppercase">{label}</h3>
+    <h3 className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-neutral-400">{label}</h3>
     <p className={`rounded-lg border p-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap ${className}`}>{text}</p>
   </div>
 )
@@ -46,15 +46,23 @@ const ResultPanel = ({ result, decisions, correctedText, onToggleSuggestion, onC
   const handleCopy = () => copy(correctedText)
 
   return (
-    <section aria-label="Result" className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <h2 className="text-sm font-semibold text-slate-900">{ACTION_LABEL[result.action]} result</h2>
+    <section aria-label="Result" className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-neutral-700 dark:bg-neutral-800">
+      <h2 className="text-sm font-semibold text-slate-900 dark:text-neutral-100">{ACTION_LABEL[result.action]} result</h2>
       <EngineStatusList engines={result.engines} />
-      <TextBlock label="Original" text={result.original} className="border-slate-200 bg-white text-slate-600" />
-      <TextBlock label="Corrected" text={correctedText} className="border-brand-100 bg-brand-50 text-slate-900" />
+      <TextBlock
+        label="Original"
+        text={result.original}
+        className="border-slate-200 bg-white text-slate-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400"
+      />
+      <TextBlock
+        label="Corrected"
+        text={correctedText}
+        className="border-brand-100 bg-brand-50 text-slate-900 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-neutral-100"
+      />
 
       {result.suggestions.length ? (
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+          <h3 className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-neutral-400">
             Changes ({result.suggestions.length}) · untick to reject
           </h3>
           <ul className="flex flex-col gap-2">
@@ -71,7 +79,7 @@ const ResultPanel = ({ result, decisions, correctedText, onToggleSuggestion, onC
           </ul>
         </div>
       ) : (
-        <p className="text-sm text-slate-600">No changes suggested by the engines that ran.</p>
+        <p className="text-sm text-slate-600 dark:text-neutral-400">No changes suggested by the engines that ran.</p>
       )}
 
       <div className="flex gap-2">

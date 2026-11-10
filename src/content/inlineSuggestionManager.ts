@@ -5,6 +5,7 @@ import { ENGINES, TONES } from '../constants/corrections.ts'
 import type { IdentifiedSuggestion } from '../engines/suggestion.ts'
 import type { InlineCheckResult, ToneAlternatives } from '../services/correctionPipeline.ts'
 import { MESSAGE_TYPES, sendMessage } from '../services/messaging.ts'
+import type { ColorScheme } from '../services/theme.ts'
 import type { RewriteResult } from '../services/writingEnhancer.ts'
 import { createFieldLocator, findClippingAncestors, getVisibleBox } from './fieldLocator.ts'
 import { createAiAnswer, describeAiAnswer, followCardChange, isAnswerFor, type AiAnswer } from './aiAnswers.ts'
@@ -79,6 +80,7 @@ export interface InlineSuggestionManager {
   openAllFromKeyboard: () => void
   setAiShortcut: (config: AiShortcutConfig) => void
   setCloseOnAccept: (config: ToggleSetting) => void
+  setColorScheme: (colorScheme: ColorScheme) => void
   isOwnElement: (element: Node | null) => boolean
 }
 
@@ -106,6 +108,8 @@ export const createInlineSuggestionManager = (): InlineSuggestionManager => {
   let aiShortcut: AiShortcutConfig = { isEnabled: false, style: null, onToggle: () => {} }
   // Whether every Accept closes the list, and how to flip that switch in Settings.
   let closeOnAccept: ToggleSetting = { isEnabled: false, onToggle: () => {} }
+  // The Theme setting, already resolved from System to light or dark; the stylesheet reads it off the host.
+  let colorScheme: ColorScheme | null = null
   // The AI rewrite in flight for the active field, if any.
   let aiRequest: AiRequest | null = null
   // Each field's last AI answer, so the same text is not sent again unless the user asks with Regenerate.
@@ -319,6 +323,7 @@ export const createInlineSuggestionManager = (): InlineSuggestionManager => {
 
   const createUi = (): InlineUi => {
     const root = createInlineRoot()
+    if (colorScheme) root.host.dataset.theme = colorScheme
     const getSession = () => session
     const actions = createSuggestionActions({
       getSession,
@@ -484,6 +489,10 @@ export const createInlineSuggestionManager = (): InlineSuggestionManager => {
     setCloseOnAccept: (config: ToggleSetting) => {
       closeOnAccept = config
       if (session && ui) render()
+    },
+    setColorScheme: (newColorScheme: ColorScheme) => {
+      colorScheme = newColorScheme
+      if (ui) ui.root.host.dataset.theme = newColorScheme
     },
     isOwnElement: (element: Node | null) => element !== null && element === ui?.root.host,
   }

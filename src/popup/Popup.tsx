@@ -58,12 +58,12 @@ const Popup = () => {
   }
 
   return (
-    <main className="w-110 bg-white font-sans text-slate-900">
+    <main className="w-110 bg-white font-sans text-slate-900 dark:bg-neutral-900 dark:text-neutral-100">
       <PopupHeader status={status} version={version} />
       <div className="flex flex-col gap-3 px-4 py-3">
         <TextInput value={text} onChange={handleTextChange} isReadOnly={Boolean(correction.pendingAction)} />
         {textBeforeReplace !== null && (
-          <div role="status" className="-mt-2 flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800">
+          <div role="status" className="-mt-2 flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300">
             Input replaced with the corrected text.
             <Button variant="ghost" className="px-2 py-1 text-xs" onClick={handleUndoReplace} disabled={Boolean(correction.pendingAction)}>
               Undo
@@ -89,7 +89,7 @@ const Popup = () => {
         />
         {settings && <InlineControls settings={settings} hostname={hostname} onUpdate={updateSettings} onOpenSettings={handleOpenSettings} />}
         {correction.error && (
-          <p ref={revealAlert} role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <p ref={revealAlert} role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
             {correction.error}
           </p>
         )}

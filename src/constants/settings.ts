@@ -2,6 +2,20 @@ import { REWRITE_STYLES, type RewriteStyle } from './ai.ts'
 
 export const DELAY_LIMITS_MS = Object.freeze({ min: 500, max: 3000, step: 250 })
 
+export const THEMES = Object.freeze({
+  system: 'system',
+  light: 'light',
+  dark: 'dark',
+})
+
+export type Theme = (typeof THEMES)[keyof typeof THEMES]
+
+export const THEME_LABEL: Record<Theme, string> = {
+  [THEMES.system]: 'Match system',
+  [THEMES.light]: 'Light',
+  [THEMES.dark]: 'Dark',
+}
+
 export interface Settings {
   isInlineEnabled: boolean
   isSpellingEnabled: boolean
@@ -12,6 +26,7 @@ export interface Settings {
   isAiShortcutEnabled: boolean
   aiShortcutStyle: RewriteStyle
   isCloseOnAcceptEnabled: boolean
+  theme: Theme
   pausedSites: string[]
   customSites: string[]
 }
@@ -28,6 +43,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   aiShortcutStyle: REWRITE_STYLES.improveWording,
   // Accepting the AI's rewrite always closes the Ctrl+Shift+Space list; with this on, accepting anything does.
   isCloseOnAcceptEnabled: false,
+  theme: THEMES.system,
   pausedSites: [],
   customSites: [],
 })

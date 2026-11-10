@@ -24,10 +24,10 @@ const SwitchField = ({ id, label, description, checked, disabled = false, onChan
         className="mt-0.5 size-4 shrink-0 accent-brand-600"
       />
       <div className="flex flex-col gap-0.5">
-        <label htmlFor={id} className="text-sm font-medium text-slate-700">
+        <label htmlFor={id} className="text-sm font-medium text-slate-700 dark:text-neutral-200">
           {label}
         </label>
-        {description && <p className="text-xs text-slate-500">{description}</p>}
+        {description && <p className="text-xs text-slate-500 dark:text-neutral-400">{description}</p>}
       </div>
     </div>
   )

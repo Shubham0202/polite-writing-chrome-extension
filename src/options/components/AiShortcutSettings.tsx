@@ -11,7 +11,7 @@ interface AiShortcutSettingsProps {
 }
 
 const AiShortcutSettings = ({ settings, onUpdate }: AiShortcutSettingsProps) => (
-  <div className="flex flex-col gap-3 border-t border-slate-200 pt-3">
+  <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 dark:border-neutral-700">
     <SwitchField
       id="setting-isAiShortcutEnabled"
       label="Rewrite with AI from the keyboard shortcut"
@@ -21,7 +21,7 @@ const AiShortcutSettings = ({ settings, onUpdate }: AiShortcutSettingsProps) => 
       onChange={(isAiShortcutEnabled) => onUpdate({ isAiShortcutEnabled })}
     />
     <div className="flex items-center gap-3">
-      <label htmlFor="setting-aiShortcutStyle" className="text-sm font-medium text-slate-700">
+      <label htmlFor="setting-aiShortcutStyle" className="text-sm font-medium text-slate-700 dark:text-neutral-200">
         Style for the shortcut
       </label>
       <Select

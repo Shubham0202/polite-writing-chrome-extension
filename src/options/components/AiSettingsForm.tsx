@@ -6,7 +6,8 @@ import { FORM_STATUS, useAiSettingsForm, type FormStatus } from '../hooks/useAiS
 
 const MODEL_SUGGESTIONS_ID = 'ai-model-suggestions'
 
-const INPUT_CLASS = 'rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none'
+const INPUT_CLASS =
+  'rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none dark:border-neutral-600 dark:focus:ring-brand-500/30'
 
 const STATUS_MESSAGE: Record<FormStatus, (provider: AiProvider) => string | null> = {
   [FORM_STATUS.idle]: () => null,
@@ -22,7 +23,7 @@ interface FieldProps {
 
 const Field = ({ id, label, children }: FieldProps) => (
   <div className="flex flex-col gap-1.5">
-    <label htmlFor={id} className="text-sm font-medium text-slate-700">
+    <label htmlFor={id} className="text-sm font-medium text-slate-700 dark:text-neutral-200">
       {label}
     </label>
     {children}
@@ -56,7 +57,7 @@ const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
               </option>
             ))}
           </Select>
-          <a href={AI_PROVIDER_KEY_URL[form.provider]} target="_blank" rel="noreferrer" className="text-xs text-brand-700 underline">
+          <a href={AI_PROVIDER_KEY_URL[form.provider]} target="_blank" rel="noreferrer" className="text-xs text-brand-700 underline dark:text-brand-300">
             Get an API key
           </a>
         </div>
@@ -94,7 +95,7 @@ const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
             ))}
           </datalist>
         )}
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-neutral-400">
           {hasSuggestions ? 'Leave empty to use the default model, or click the field to pick a suggested free model.' : 'Leave empty to use the default model.'}
         </p>
       </Field>
@@ -109,16 +110,16 @@ const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
         )}
       </div>
       {error && (
-        <p role="alert" className="text-xs text-rose-700">
+        <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">
           {error.message}
         </p>
       )}
       {statusMessage && (
-        <p role="status" className="text-xs text-emerald-800">
+        <p role="status" className="text-xs text-emerald-800 dark:text-emerald-300">
           {statusMessage}
         </p>
       )}
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-neutral-400">
         Rewrite with AI sends the text in the popup to {AI_PROVIDER_LABEL[form.provider]} only when you press that button. With the switch below on,
         Ctrl+Shift+Space does the same for the field you are typing in on a website. Checks as you type never use it. The key is stored in
         Chrome&apos;s extension storage on this computer; Remove key deletes it.

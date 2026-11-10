@@ -25,16 +25,16 @@ const EngineStatusList = ({ engines }: EngineStatusListProps) => {
         {engines.map((engine) => (
           <li
             key={engine.label}
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-700"
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
           >
             <span className={`size-1.5 rounded-full ${STATUS_STYLE[engine.status].dotClass}`} aria-hidden="true" />
             {engine.label}
-            <span className="text-slate-400">{STATUS_STYLE[engine.status].label}</span>
+            <span className="text-slate-400 dark:text-neutral-500">{STATUS_STYLE[engine.status].label}</span>
           </li>
         ))}
       </ul>
       {notices.map((engine) => (
-        <p key={engine.label} role="status" className="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800">
+        <p key={engine.label} role="status" className="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
           {engine.message}
         </p>
       ))}

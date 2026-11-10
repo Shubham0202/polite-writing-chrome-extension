@@ -35,6 +35,7 @@ const createManager = () => {
     showNotice: record('showNotice'),
     setAiShortcut: record('setAiShortcut'),
     setCloseOnAccept: record('setCloseOnAccept'),
+    setColorScheme: record('setColorScheme'),
     openAllFromKeyboard: record('openAllFromKeyboard'),
     isOwnElement: () => true,
   }
@@ -108,6 +109,16 @@ describe('lazy inline suggestions', () => {
     const switchedOff = { isEnabled: false, onToggle: () => {} }
     lazy.setCloseOnAccept(switchedOff)
     assert.deepEqual(manager.calls.at(-1), ['setCloseOnAccept', switchedOff])
+  })
+
+  it('hands the UI the theme when it loads, so it is never drawn in the wrong colours, and every change after that', async () => {
+    const lazy = createLazy()
+    lazy.setColorScheme('dark')
+    lazy.attach(FIELD, 'textarea')
+    await lazy.showResult(RESULT_WITH_MISTAKE)
+    assert.deepEqual(manager.calls.slice(0, 2), [['setColorScheme', 'dark'], ['attach', FIELD, 'textarea']])
+    lazy.setColorScheme('light')
+    assert.deepEqual(manager.calls.at(-1), ['setColorScheme', 'light'])
   })
 
   it('leaves the UI unloaded for the shortcut while AI rewriting is off, or no field is active', async () => {

@@ -1,5 +1,6 @@
 import type { InlineCheckResult } from '../services/correctionPipeline.ts'
 import { MESSAGE_TYPES, sendMessage } from '../services/messaging.ts'
+import type { ColorScheme } from '../services/theme.ts'
 import type { FieldKind } from './fieldEligibility.ts'
 // Declares the writeBetterInlineUi global read below; type-only, so the UI is still injected on demand, not bundled here.
 import type {} from './inlineUi.ts'
@@ -27,6 +28,7 @@ export interface LazyInlineSuggestions {
   openAllFromKeyboard: () => Promise<void>
   setAiShortcut: (config: AiShortcutConfig) => void
   setCloseOnAccept: (config: ToggleSetting) => void
+  setColorScheme: (colorScheme: ColorScheme) => void
   isOwnElement: (element: Node | null) => boolean
 }
 
@@ -41,12 +43,14 @@ export const createLazyInlineSuggestions = ({ onUnavailable }: LazyInlineSuggest
   let activeField: ActiveField | null = null
   let aiShortcut: AiShortcutConfig | null = null
   let closeOnAccept: ToggleSetting | null = null
+  let colorScheme: ColorScheme | null = null
 
   const load = (): Promise<InlineSuggestionManager | null> => {
     loading ??= sendMessage(MESSAGE_TYPES.loadInlineUi).then(() => {
       manager = globalThis.writeBetterInlineUi!
       if (aiShortcut) manager.setAiShortcut(aiShortcut)
       if (closeOnAccept) manager.setCloseOnAccept(closeOnAccept)
+      if (colorScheme) manager.setColorScheme(colorScheme)
       if (activeField) manager.attach(activeField.field, activeField.kind)
       return manager
     })
@@ -87,6 +91,10 @@ export const createLazyInlineSuggestions = ({ onUnavailable }: LazyInlineSuggest
     setCloseOnAccept: (config) => {
       closeOnAccept = config
       manager?.setCloseOnAccept(config)
+    },
+    setColorScheme: (newColorScheme) => {
+      colorScheme = newColorScheme
+      manager?.setColorScheme(newColorScheme)
     },
     isOwnElement: (element) => manager?.isOwnElement(element) ?? false,
   }

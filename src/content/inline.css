@@ -8,22 +8,22 @@
   --wb-radius: 8px;
 }
 
-/* Follows the system setting rather than the site, which offers no reliable way to tell its own theme. Only the dark
-   colours are variables: each rule falls back to its light colour, which keeps this in-page stylesheet small. The
-   raised surface lifts hovered buttons, pressed switches and the toast off the card and off near-black pages. */
-@media (prefers-color-scheme: dark) {
-  :host {
-    --wb-surface: var(--color-neutral-900);
-    --wb-surface-raised: var(--color-neutral-800);
-    --wb-border: var(--color-neutral-700);
-    --wb-control-border: var(--color-neutral-600);
-    --wb-text: var(--color-neutral-100);
-    --wb-text-muted: var(--color-neutral-400);
-    --wb-pressed-text: var(--color-brand-100);
-    --wb-removed: var(--color-rose-300);
-    --wb-added: var(--color-emerald-300);
-    --wb-shadow-color: rgb(0 0 0 / 0.5);
-  }
+/* Follows the Theme setting rather than the site, which offers no reliable way to tell its own theme; System has been
+   resolved to the OS theme before it reaches this attribute. Only the dark colours are variables: each rule falls back
+   to its light colour, which keeps this in-page stylesheet small. The raised surface lifts hovered buttons, pressed
+   switches and the toast off the card and off near-black pages. */
+:host([data-theme='dark']) {
+  --wb-surface: var(--color-neutral-900);
+  --wb-surface-raised: var(--color-neutral-800);
+  --wb-border: var(--color-neutral-700);
+  --wb-control-border: var(--color-neutral-600);
+  --wb-text: var(--color-neutral-100);
+  --wb-text-muted: var(--color-neutral-400);
+  --wb-pressed-text: var(--color-brand-100);
+  --wb-removed: var(--color-rose-300);
+  --wb-added: var(--color-emerald-300);
+  --wb-shadow-color: rgb(0 0 0 / 0.5);
+  --wb-color-scheme: dark;
 }
 
 [hidden] {
@@ -156,7 +156,7 @@ button:focus-visible {
   font: 14px/1.4 var(--font-sans);
   pointer-events: auto;
   /* The list's scrollbar follows the card's colours. */
-  color-scheme: light dark;
+  color-scheme: var(--wb-color-scheme, light);
 }
 
 /* The list holds every suggestion, so it is wider and scrolls instead of growing past the viewport. */

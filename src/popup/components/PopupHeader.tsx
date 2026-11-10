@@ -18,15 +18,15 @@ export interface PopupHeaderProps {
 }
 
 const PopupHeader = ({ status, version }: PopupHeaderProps) => (
-  <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+  <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-neutral-700">
     <div>
-      <h1 className="text-base font-semibold text-slate-900">WriteBetter</h1>
-      <p className="text-xs text-slate-500">Local-first writing assistant</p>
+      <h1 className="text-base font-semibold text-slate-900 dark:text-neutral-100">WriteBetter</h1>
+      <p className="text-xs text-slate-500 dark:text-neutral-400">Local-first writing assistant</p>
     </div>
-    <div className="flex items-center gap-2 text-xs text-slate-600" role="status">
+    <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-neutral-400" role="status">
       <span className={`size-2 rounded-full ${STATUS_DOT_CLASS[status]}`} aria-hidden="true" />
       <span>{STATUS_LABEL[status]}</span>
-      {version && <span className="text-slate-400">v{version}</span>}
+      {version && <span className="text-slate-400 dark:text-neutral-500">v{version}</span>}
     </div>
   </header>
 )

@@ -12,7 +12,7 @@ const DelayField = ({ delayMs, disabled, onChange }: DelayFieldProps) => {
 
   return (
     <div className="flex items-center gap-3">
-      <label htmlFor="suggestion-delay" className="text-sm font-medium text-slate-700">
+      <label htmlFor="suggestion-delay" className="text-sm font-medium text-slate-700 dark:text-neutral-200">
         Check after a pause of
       </label>
       <input
@@ -26,7 +26,7 @@ const DelayField = ({ delayMs, disabled, onChange }: DelayFieldProps) => {
         onChange={handleChange}
         className="flex-1 accent-brand-600"
       />
-      <output htmlFor="suggestion-delay" className="w-20 text-right text-sm text-slate-700">
+      <output htmlFor="suggestion-delay" className="w-20 text-right text-sm text-slate-700 dark:text-neutral-200">
         {delayMs / 1000} {delayMs === 1000 ? 'second' : 'seconds'}
       </output>
     </div>

@@ -1,4 +1,5 @@
 import SwitchField from '../components/SwitchField.tsx'
+import type { Theme } from '../constants/settings.ts'
 import { useSettings } from '../hooks/useSettings.ts'
 import AiSettingsForm from './components/AiSettingsForm.tsx'
 import AiShortcutSettings from './components/AiShortcutSettings.tsx'
@@ -7,6 +8,7 @@ import IgnoredWordList from './components/IgnoredWordList.tsx'
 import PrivacySummary from './components/PrivacySummary.tsx'
 import SettingsSection from './components/SettingsSection.tsx'
 import SiteList from './components/SiteList.tsx'
+import ThemeField from './components/ThemeField.tsx'
 import { useAiSettings } from './hooks/useAiSettings.ts'
 import { useCustomSites } from './hooks/useCustomSites.ts'
 import { useIgnoredWords } from './hooks/useIgnoredWords.ts'
@@ -32,12 +34,13 @@ const Options = () => {
   if (!settings) return null
 
   const handleDelayChange = (delayMs: number) => updateSettings({ delayMs })
+  const handleThemeChange = (theme: Theme) => updateSettings({ theme })
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6 font-sans text-slate-900">
+    <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6 font-sans text-slate-900 dark:text-neutral-100">
       <header>
         <h1 className="text-lg font-semibold">WriteBetter settings</h1>
-        <p className="text-sm text-slate-500">These control the suggestions on websites and the optional AI rewriting in the popup. The popup buttons always run every check.</p>
+        <p className="text-sm text-slate-500 dark:text-neutral-400">These control the suggestions on websites and the optional AI rewriting in the popup. The popup buttons always run every check.</p>
       </header>
 
       <SettingsSection title="Inline suggestions">
@@ -83,6 +86,10 @@ const Options = () => {
       >
         {aiSettings && <AiSettingsForm stored={aiSettings} />}
         <AiShortcutSettings settings={settings} onUpdate={updateSettings} />
+      </SettingsSection>
+
+      <SettingsSection title="Appearance" description="Colours for the popup, this page and the suggestions on websites.">
+        <ThemeField theme={settings.theme} onChange={handleThemeChange} />
       </SettingsSection>
 
       <SettingsSection title="Privacy">

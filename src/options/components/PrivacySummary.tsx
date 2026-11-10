@@ -7,7 +7,7 @@ const PRIVACY_POINTS = [
 ]
 
 const PrivacySummary = () => (
-  <ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-slate-700">
+  <ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-slate-700 dark:text-neutral-200">
     {PRIVACY_POINTS.map((point) => (
       <li key={point}>{point}</li>
     ))}

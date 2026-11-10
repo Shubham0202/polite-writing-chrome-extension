@@ -17,7 +17,7 @@ const InlineControls = ({ settings, hostname, onUpdate, onOpenSettings }: Inline
   const handleSiteChange = (isEnabled: boolean) => onUpdate({ pausedSites: setSitePaused(settings, hostname!, !isEnabled) })
 
   return (
-    <section aria-label="Inline suggestions" className="flex items-start justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+    <section aria-label="Inline suggestions" className="flex items-start justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 dark:border-neutral-700 dark:bg-neutral-800">
       <div className="flex min-w-0 flex-col gap-2">
         <SwitchField id="inline-enabled" label="Suggestions on websites" checked={settings.isInlineEnabled} onChange={handleInlineChange} />
         {canPauseSite && (

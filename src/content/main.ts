@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS, type Settings } from '../constants/settings.ts'
 import type { InlineCheckResult } from '../services/correctionPipeline.ts'
 import { MESSAGE_TYPES, type CommandMessageType } from '../services/messaging.ts'
 import { getSettings, isAssistanceActive, onSettingsChanged, updateSettings } from '../services/settings.ts'
+import { watchTheme } from '../services/theme.ts'
 import { logDebug as log } from '../utils/debugLog.ts'
 import { lookup } from '../utils/lookup.ts'
 import { createInputFieldObserver } from './inputFieldObserver.ts'
@@ -31,6 +32,8 @@ let settings = DEFAULT_SETTINGS
 const inlineSuggestions = createLazyInlineSuggestions({
   onUnavailable: (reason) => log(`Suggestions unavailable: ${reason}`),
 })
+
+const setTheme = watchTheme(inlineSuggestions.setColorScheme)
 
 const checkText = createTextChecker({
   onResult: (result) => {
@@ -82,6 +85,7 @@ const applySettings = (newSettings: Settings): void => {
   settings = newSettings
   inlineSuggestions.setAiShortcut({ isEnabled: settings.isAiShortcutEnabled, style: settings.aiShortcutStyle, onToggle: toggleAiShortcut })
   inlineSuggestions.setCloseOnAccept({ isEnabled: settings.isCloseOnAcceptEnabled, onToggle: toggleCloseOnAccept })
+  setTheme(settings.theme)
   if (isAssistanceActive(settings, getPageHostname())) inputFieldObserver.start()
   else inputFieldObserver.stop()
 }

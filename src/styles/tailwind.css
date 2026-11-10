@@ -2,3 +2,13 @@
 @import "./brandTheme.css";
 /* The inline UI has its own stylesheet; words in its code would otherwise be read as utility class names. */
 @source not "../content";
+
+/* dark: follows the Theme setting, which services/theme.ts resolves and puts on the root element. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@layer base {
+  /* Native controls, scrollbars and the page behind the content go dark too. */
+  [data-theme='dark'] {
+    color-scheme: dark;
+  }
+}
