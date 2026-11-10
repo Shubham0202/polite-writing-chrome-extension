@@ -34,8 +34,17 @@ describe('site adapters', () => {
     }
   })
 
+  it('checks rich text with writing assistants turned off on every Atlassian site, and not on look-alikes', () => {
+    for (const hostname of ['medarch.atlassian.net', 'example.atlassian.net']) {
+      assert.equal(getSiteAdapter(hostname).checksRichTextWithAssistantsOff, true, hostname)
+    }
+    for (const hostname of ['atlassian.net', 'notatlassian.net', 'example.atlassian.net.evil.com']) {
+      assert.deepEqual(getSiteAdapter(hostname), {}, hostname)
+    }
+  })
+
   it('adds nothing on sites that generic handling already covers', () => {
-    for (const hostname of ['web.whatsapp.com', 'www.linkedin.com', 'example.atlassian.net', 'constructor', undefined]) {
+    for (const hostname of ['web.whatsapp.com', 'www.linkedin.com', 'constructor', '', undefined]) {
       assert.deepEqual(getSiteAdapter(hostname), {}, hostname)
     }
   })

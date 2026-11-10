@@ -1,4 +1,5 @@
 import { BUILT_IN_SITES, DEFAULT_SETTINGS } from '../constants/settings.js'
+import { matchesSite } from '../utils/siteMatch.js'
 import { onStorageValueChanged } from './storageChanges.js'
 
 const STORAGE_KEY = 'settings'
@@ -14,8 +15,6 @@ export const updateSettings = async (changes) => {
 
 export const onSettingsChanged = (listener) =>
   onStorageValueChanged(STORAGE_KEY, (newValue, oldValue) => listener(normalizeSettings(newValue), normalizeSettings(oldValue)))
-
-const matchesSite = (site, hostname) => (site.startsWith('*.') ? hostname.endsWith(site.slice(1)) : site === hostname)
 
 export const isSiteListed = ({ customSites }, hostname) =>
   [...BUILT_IN_SITES.map((site) => site.hostname), ...customSites].some((site) => matchesSite(site, hostname))

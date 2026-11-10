@@ -2,6 +2,7 @@ import { ENGINE_STATUS } from '../constants/corrections.js'
 import { DEFAULT_SETTINGS } from '../constants/settings.js'
 import { MESSAGE_TYPES } from '../services/messaging.js'
 import { getSettings, isAssistanceActive, onSettingsChanged, updateSettings } from '../services/settings.js'
+import { logDebug as log } from '../utils/debugLog.js'
 import { lookup } from '../utils/lookup.js'
 import { createInputFieldObserver } from './inputFieldObserver.js'
 import { createLazyInlineSuggestions } from './lazyInlineSuggestions.js'
@@ -10,9 +11,6 @@ import { createTextChangeDetector } from './textChangeDetector.js'
 import { createTextChecker } from './textChecker.js'
 
 const CHECK_SETTINGS = ['isSpellingEnabled', 'isGrammarEnabled', 'isPoliteEnabled', 'isProfessionalEnabled']
-
-// Reported at the debug level (DevTools "Verbose") to help check real sites. Reports never include the user's text.
-const log = (message, ...details) => console.debug(`[WriteBetter] ${message}`, ...details)
 
 const summarizeResult = ({ suggestions, toneAlternatives, engines }) =>
   JSON.stringify({

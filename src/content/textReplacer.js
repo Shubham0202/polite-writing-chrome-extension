@@ -1,7 +1,9 @@
 /** @author Shubham Chandgude <shubham826852@gmail.com> */
 
+import { logDebug } from '../utils/debugLog.js'
+import { findEdit } from '../utils/textRebase.js'
 import { FIELD_KINDS } from './fieldEligibility.js'
-import { findEditableCaret, findEditablePositions, getFieldSelection, mapEditableText, readFieldText } from './fieldText.js'
+import { findEditableCaret, findEditableOffset, findEditablePositions, getFieldSelection, mapEditableText, readFieldText } from './fieldText.js'
 
 // Editors that own their document can apply an edit just after the command returns.
 const VERIFY_ATTEMPTS = 6
@@ -59,10 +61,36 @@ const INVISIBLE_CHARACTERS = /[\u200B\u2060\uFEFF]/g
 const toComparableText = (text) => text.replaceAll('\u00A0', ' ').replace(INVISIBLE_CHARACTERS, '')
 export const isSameText = (first, second) => toComparableText(first) === toComparableText(second)
 
+const getEditableSelectionOffsets = (field) => {
+  const textMap = mapEditableText(field)
+  const { anchorNode, anchorOffset, focusNode, focusOffset } = getFieldSelection(field)
+  return [findEditableOffset(textMap, anchorNode, anchorOffset), findEditableOffset(textMap, focusNode, focusOffset)]
+}
+
+const SELECTION_OFFSETS = {
+  [FIELD_KINDS.input]: (field) => [field.selectionStart, field.selectionEnd],
+  [FIELD_KINDS.textarea]: (field) => [field.selectionStart, field.selectionEnd],
+  [FIELD_KINDS.contentEditable]: getEditableSelectionOffsets,
+}
+
+// Says which step of an edit a site broke, in offsets and lengths only, never the text itself.
+const describeFailedEdit = ({ field, kind, start, end, selection, isCommandRun, text, expected }) => {
+  const actual = readFieldText(field, kind)
+  let firstDifference = 0
+  while (firstDifference < expected.length && actual[firstDifference] === expected[firstDifference]) firstDifference += 1
+  const outcome = isSameText(actual, text)
+    ? 'the text did not change'
+    : `the text first differs from the expected text at ${firstDifference}, length ${actual.length} instead of ${expected.length}`
+  const focus = field.getRootNode().activeElement === field ? 'in the field' : 'elsewhere'
+  return `Edit of ${start}–${end} failed: selection was ${selection.join('–')}, focus ${focus}, edit command ${isCommandRun ? 'ran' : 'was refused'}, ${outcome}`
+}
+
+// Right after the command, the field shows the browser's raw edit; an editor that rejects or moves it only does so
+// once it has processed that change, so the first read waits too.
 const waitForText = async (field, kind, expected) => {
   for (let attempt = 0; attempt < VERIFY_ATTEMPTS; attempt += 1) {
-    if (isSameText(readFieldText(field, kind), expected)) return true
     await new Promise((resolve) => setTimeout(resolve, VERIFY_INTERVAL_MS))
+    if (isSameText(readFieldText(field, kind), expected)) return true
   }
   return false
 }
@@ -75,7 +103,8 @@ export const shiftCaret = (caret, start, end, replacementLength) => {
 
 // Emoji images and mentions have no editable text, so an edit across them is split into edits of the text between
 // them. Each one must still be in the replacement, in order; the parts that come out the same are left alone. Returns
-// null when there is no safe split: the replacement drops one, or one sticks out of the edited span.
+// null when there is no safe split: the replacement drops one, or one sticks out of the edited span. A mention is
+// looked for by what it shows, because editors such as Jira's keep invisible characters inside it that a rewrite drops.
 export const splitAroundAtoms = (text, atoms, start, end, replacement) => {
   const parts = []
   let from = start
@@ -83,14 +112,23 @@ export const splitAroundAtoms = (text, atoms, start, end, replacement) => {
   for (const [atomStart, atomEnd] of atoms) {
     if (atomEnd <= start || atomStart >= end) continue
     if (atomStart < start || atomEnd > end) return null
-    const found = replacement.indexOf(text.slice(atomStart, atomEnd), searchFrom)
+    const atomText = toComparableText(text.slice(atomStart, atomEnd))
+    const found = atomText ? replacement.indexOf(atomText, searchFrom) : -1
     if (found === -1) return null
     parts.push({ start: from, end: atomStart, replacement: replacement.slice(searchFrom, found) })
     from = atomEnd
-    searchFrom = found + atomEnd - atomStart
+    searchFrom = found + atomText.length
   }
   parts.push({ start: from, end, replacement: replacement.slice(searchFrom) })
   return parts.filter((part) => !isSameText(text.slice(part.start, part.end), part.replacement))
+}
+
+// A line break between two paragraphs has no text node to select, so an edit cannot start or end on one, as a rewrite
+// of the whole text does when the field ends with an empty line. Only what actually changes is edited instead, which
+// also keeps the formatting of the text around it.
+export const narrowToChange = (text, { start, end, replacement }) => {
+  const change = findEdit(text.slice(start, end), replacement)
+  return { start: start + change.start, end: start + change.oldEnd, replacement: replacement.slice(change.start, change.newEnd) }
 }
 
 // Goes through the browser's edit command, so the page gets a normal input event and Ctrl+Z can undo it. Resolves to
@@ -101,13 +139,17 @@ const replaceSpan = async ({ field, kind, caret, start, end, replacement }) => {
   const { scrollTop } = field
   // The edit command acts on whatever has focus, which must be this field and no other.
   field.focus()
-  if (!SELECT_RANGE[kind](field, start, end)) return false
+  if (!SELECT_RANGE[kind](field, start, end)) {
+    logDebug(`Edit of ${start}–${end} failed: that text could not be selected`)
+    return false
+  }
   if (kind === FIELD_KINDS.contentEditable) await waitForSelectionChange()
 
-  if (replacement) document.execCommand('insertText', false, replacement)
-  else document.execCommand('delete')
+  const selection = SELECTION_OFFSETS[kind](field)
+  const isCommandRun = replacement ? document.execCommand('insertText', false, replacement) : document.execCommand('delete')
 
   const isReplaced = await waitForText(field, kind, expected)
+  if (!isReplaced) logDebug(describeFailedEdit({ field, kind, start, end, selection, isCommandRun, text, expected }))
   // A maxlength can cut a replacement short, which is worse than no change at all.
   if (!isReplaced && readFieldText(field, kind) !== text) document.execCommand('undo')
 
@@ -134,8 +176,11 @@ const replaceInParts = async ({ field, kind, caret, start, end, replacement }, p
 export const replaceFieldText = async (edit) => {
   if (edit.kind !== FIELD_KINDS.contentEditable) return replaceSpan(edit)
   const { text, atoms } = mapEditableText(edit.field)
-  const parts = splitAroundAtoms(text, atoms, edit.start, edit.end, edit.replacement)
-  if (!parts) return false
+  const parts = splitAroundAtoms(text, atoms, edit.start, edit.end, edit.replacement)?.map((part) => narrowToChange(text, part))
+  if (!parts) {
+    logDebug(`Edit of ${edit.start}–${edit.end} failed: it would drop or cut through a mention or emoji`)
+    return false
+  }
   if (parts.length > 1) return replaceInParts(edit, parts)
   return parts.length ? replaceSpan({ ...edit, ...parts[0] }) : true
 }

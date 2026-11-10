@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { isSameText, shiftCaret, splitAroundAtoms } from './textReplacer.js'
+import { isSameText, narrowToChange, shiftCaret, splitAroundAtoms } from './textReplacer.js'
 
 describe('caret after a replacement', () => {
   it('stays put before the change', () => {
@@ -55,15 +55,46 @@ describe('edits across emoji images and mentions', () => {
     ])
   })
 
+  it('finds a mention by what it shows, without the invisible characters Jira keeps inside it', () => {
+    const text = '​@sachin.dhokale​ this is for testing'
+    assert.deepEqual(splitAroundAtoms(text, [[0, 17]], 0, text.length, '@sachin.dhokale This is for testing.'), [
+      { start: 17, end: text.length, replacement: ' This is for testing.' },
+    ])
+  })
+
   it('refuses a rewrite that drops one, or a span that cuts through one', () => {
     assert.equal(splitAroundAtoms(TEXT, [EMOJI], 0, TEXT.length, 'Thanks for the update. Could you send the file?'), null)
     assert.equal(splitAroundAtoms(TEXT, [EMOJI], 23, TEXT.length, 'x'), null)
+  })
+
+  it('refuses to place one that shows nothing, since the rewrite cannot say where it goes', () => {
+    assert.equal(splitAroundAtoms('a​b', [[1, 2]], 0, 3, 'A b'), null)
   })
 
   it('has nothing to do when the replacement changes nothing, a non-breaking space included', () => {
     assert.deepEqual(splitAroundAtoms(TEXT, [EMOJI], 0, TEXT.length, TEXT), [])
     const browserText = TEXT.replace('update ', 'update\u00A0')
     assert.deepEqual(splitAroundAtoms(browserText, [EMOJI], 0, TEXT.length, TEXT.replace('file', 'files')), [{ start: 24, end: TEXT.length, replacement: ' can you send the files' }])
+  })
+})
+
+describe('narrowing an edit to what changes', () => {
+  it('leaves out a line break both sides end with, which rich text cannot select', () => {
+    const text = 'this is for testing\n'
+    assert.deepEqual(narrowToChange(text, { start: 0, end: text.length, replacement: 'This is for testing.\n' }), {
+      start: 0,
+      end: 19,
+      replacement: 'This is for testing.',
+    })
+  })
+
+  it('keeps only the changed characters of a word', () => {
+    assert.deepEqual(narrowToChange('send the fiel now', { start: 9, end: 13, replacement: 'file' }), { start: 11, end: 13, replacement: 'le' })
+  })
+
+  it('keeps an insertion and a deletion as they are', () => {
+    assert.deepEqual(narrowToChange('send it', { start: 7, end: 7, replacement: '.' }), { start: 7, end: 7, replacement: '.' })
+    assert.deepEqual(narrowToChange('send it it', { start: 7, end: 10, replacement: '' }), { start: 7, end: 10, replacement: '' })
   })
 })
 

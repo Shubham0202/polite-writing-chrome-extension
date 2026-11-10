@@ -109,6 +109,30 @@ describe('field eligibility', () => {
     })
   })
 
+  describe('on a site whose editors turn writing assistants off', () => {
+    const siteAdapter = { checksRichTextWithAssistantsOff: true }
+
+    it('checks rich text there, and nowhere else', () => {
+      const editor = fakeElement({ isContentEditable: true, attributes: { 'data-gramm': 'false' } })
+      assert.equal(getFieldSupport(editor, siteAdapter).skipReason, null)
+      assert.equal(getFieldSupport(editor).skipReason, SKIP_REASONS.assistantsOff)
+    })
+
+    it('still skips plain inputs and textareas that opt out', () => {
+      for (const localName of ['input', 'textarea']) {
+        const field = fakeElement({ localName, type: 'text', attributes: { 'data-gramm': 'false' } })
+        assert.equal(getFieldSupport(field, siteAdapter).skipReason, SKIP_REASONS.assistantsOff, localName)
+      }
+    })
+
+    it('still respects spellcheck off and sensitive labels in rich text', () => {
+      const spellcheckOff = fakeElement({ isContentEditable: true, attributes: { 'data-gramm': 'false', spellcheck: 'false' } })
+      const sensitive = fakeElement({ isContentEditable: true, attributes: { 'data-gramm': 'false', 'aria-label': 'Enter your PIN' } })
+      assert.equal(getFieldSupport(spellcheckOff, siteAdapter).skipReason, SKIP_REASONS.spellcheckOff)
+      assert.equal(getFieldSupport(sensitive, siteAdapter).skipReason, SKIP_REASONS.sensitive)
+    })
+  })
+
   it('checks a field whose spellcheck is explicitly on', () => {
     assert.equal(getFieldSupport(fakeElement({ localName: 'textarea', attributes: { spellcheck: 'true' } })).skipReason, null)
   })

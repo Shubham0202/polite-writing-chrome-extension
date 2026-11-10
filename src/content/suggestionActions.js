@@ -1,4 +1,5 @@
 import { MESSAGE_TYPES, sendMessage } from '../services/messaging.js'
+import { logDebug } from '../utils/debugLog.js'
 import { getVisibleBox } from './fieldLocator.js'
 import { readFieldText } from './fieldText.js'
 import { isSameText, replaceFieldText } from './textReplacer.js'
@@ -37,6 +38,7 @@ export const createSuggestionActions = ({ getSession, toast, onDismiss, onAnnoun
     // Sites can change a field without any event, so the text is compared again at the last moment.
     const text = readFieldText(field, kind)
     const isCurrent = text === state.text
+    if (!isCurrent) logDebug(`Accept failed: the field's text changed since it was checked, length ${text.length} instead of ${state.text.length}`)
     const isReplaced =
       isCurrent && (await replaceFieldText({ field, kind, caret: locator.getCaretOffset(), start: offset, end: offset + length, replacement }))
     if (getSession() !== session) return
