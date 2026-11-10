@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="510" viewBox="0 0 880 510" role="img" aria-labelledby="title description">
+  <title id="title">How WriteBetter works</title>
+  <desc id="description">What you type goes to the extension's service worker, which runs the built-in spelling, grammar, tense and tone engines on your computer and shows suggestions you accept or dismiss. A LanguageTool server on localhost is used if you run one. Text only goes online to LanguageTool's public API from the popup when Online grammar check is on, or to Gemini, Groq or OpenRouter when you ask for an AI rewrite with your own key.</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif; }
+    .background { fill: #ffffff; }
+    .heading { fill: #1f2328; font-size: 16px; font-weight: 600; }
+    .detail { fill: #59636e; font-size: 13px; }
+    .zone-label { font-size: 12px; font-weight: 600; letter-spacing: 1px; }
+    .local-zone { fill: #f5f7ff; stroke: #c7d2fe; stroke-width: 1.5; }
+    .local-label { fill: #4338ca; }
+    .online-zone { fill: #fffbeb; stroke: #f59e0b; stroke-width: 1.5; stroke-dasharray: 7 5; }
+    .online-label { fill: #b45309; }
+    .box { fill: #ffffff; stroke: #d1d9e0; stroke-width: 1.5; }
+    .box-brand { fill: #eef2ff; stroke: #6366f1; stroke-width: 2; }
+    .box-optional { fill: #ffffff; stroke: #9198a1; stroke-width: 1.5; stroke-dasharray: 6 4; }
+    .box-online { fill: #ffffff; stroke: #f59e0b; stroke-width: 1.5; }
+    .flow { stroke: #59636e; stroke-width: 2; fill: none; }
+    .flow-optional { stroke: #59636e; stroke-width: 2; fill: none; stroke-dasharray: 6 5; }
+    .flow-online { stroke: #d97706; stroke-width: 2; fill: none; stroke-dasharray: 6 5; }
+    .head { fill: #59636e; }
+    .head-online { fill: #d97706; }
+    .legend { fill: #59636e; font-size: 13px; }
+    @media (prefers-color-scheme: dark) {
+      .background { fill: #0d1117; }
+      .heading { fill: #e6edf3; }
+      .detail { fill: #9198a1; }
+      .local-zone { fill: #11152a; stroke: #3730a3; }
+      .local-label { fill: #a5b4fc; }
+      .online-zone { fill: #1f1708; stroke: #b45309; }
+      .online-label { fill: #fbbf24; }
+      .box { fill: #161b22; stroke: #3d444d; }
+      .box-brand { fill: #1e1b4b; stroke: #818cf8; }
+      .box-optional { fill: #161b22; stroke: #656c76; }
+      .box-online { fill: #161b22; stroke: #d97706; }
+      .flow, .flow-optional { stroke: #9198a1; }
+      .flow-online { stroke: #f59e0b; }
+      .head { fill: #9198a1; }
+      .head-online { fill: #f59e0b; }
+      .legend { fill: #9198a1; }
+    }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="head" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+    <marker id="arrow-online" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="head-online" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+  </defs>
+
+  <rect class="background" width="880" height="510"/>
+
+  <!-- On your computer -->
+  <rect class="local-zone" x="16" y="16" width="848" height="244" rx="14"/>
+  <text class="zone-label local-label" x="36" y="44">ON YOUR COMPUTER</text>
+
+  <rect class="box" x="36" y="64" width="176" height="88" rx="10"/>
+  <text class="heading" x="124" y="98" text-anchor="middle">You type</text>
+  <text class="detail" x="124" y="120" text-anchor="middle">on a website</text>
+  <text class="detail" x="124" y="137" text-anchor="middle">or in the popup</text>
+
+  <rect class="box-brand" x="252" y="64" width="176" height="88" rx="10"/>
+  <text class="heading" x="340" y="98" text-anchor="middle">Service worker</text>
+  <text class="detail" x="340" y="120" text-anchor="middle">inside the</text>
+  <text class="detail" x="340" y="137" text-anchor="middle">extension</text>
+
+  <rect class="box" x="468" y="64" width="176" height="88" rx="10"/>
+  <text class="heading" x="556" y="98" text-anchor="middle">Built-in engines</text>
+  <text class="detail" x="556" y="120" text-anchor="middle">spelling, grammar,</text>
+  <text class="detail" x="556" y="137" text-anchor="middle">tense and tone</text>
+
+  <rect class="box" x="684" y="64" width="160" height="88" rx="10"/>
+  <text class="heading" x="764" y="98" text-anchor="middle">Suggestions</text>
+  <text class="detail" x="764" y="120" text-anchor="middle">you accept</text>
+  <text class="detail" x="764" y="137" text-anchor="middle">or dismiss</text>
+
+  <line class="flow" x1="212" y1="108" x2="250" y2="108" marker-end="url(#arrow)"/>
+  <line class="flow" x1="428" y1="108" x2="466" y2="108" marker-end="url(#arrow)"/>
+  <line class="flow" x1="644" y1="108" x2="682" y2="108" marker-end="url(#arrow)"/>
+
+  <rect class="box-optional" x="452" y="182" width="208" height="60" rx="10"/>
+  <text class="heading" x="556" y="207" text-anchor="middle">LanguageTool server</text>
+  <text class="detail" x="556" y="228" text-anchor="middle">if you run one on localhost</text>
+  <line class="flow-optional" x1="556" y1="152" x2="556" y2="180" marker-end="url(#arrow)"/>
+
+  <!-- Online, only on request -->
+  <rect class="online-zone" x="16" y="300" width="848" height="154" rx="14"/>
+  <text class="zone-label online-label" x="36" y="328">ONLINE · ONLY WHEN YOU ASK</text>
+
+  <rect class="box-online" x="36" y="346" width="390" height="88" rx="10"/>
+  <text class="heading" x="231" y="381" text-anchor="middle">LanguageTool public API</text>
+  <text class="detail" x="231" y="404" text-anchor="middle">Popup only, when Online grammar check is on</text>
+
+  <rect class="box-online" x="454" y="346" width="390" height="88" rx="10"/>
+  <text class="heading" x="649" y="381" text-anchor="middle">Gemini, Groq or OpenRouter</text>
+  <text class="detail" x="649" y="404" text-anchor="middle">Only when you ask for an AI rewrite, with your own key</text>
+
+  <path class="flow-online" d="M316,152 V344" marker-end="url(#arrow-online)"/>
+  <path class="flow-online" d="M364,152 V278 H649 V344" marker-end="url(#arrow-online)"/>
+
+  <!-- Legend -->
+  <line class="flow" x1="36" y1="484" x2="76" y2="484"/>
+  <text class="legend" x="86" y="488">Always runs</text>
+  <line class="flow-optional" x1="200" y1="484" x2="240" y2="484"/>
+  <text class="legend" x="250" y="488">Only if you set it up</text>
+  <line class="flow-online" x1="414" y1="484" x2="454" y2="484"/>
+  <text class="legend" x="464" y="488">Leaves your computer, only when you ask</text>
+</svg>
