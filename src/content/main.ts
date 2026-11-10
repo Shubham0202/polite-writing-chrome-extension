@@ -1,13 +1,15 @@
 import { ENGINE_STATUS } from '../constants/corrections.ts'
 import { DEFAULT_SETTINGS, type Settings } from '../constants/settings.ts'
 import type { InlineCheckResult } from '../services/correctionPipeline.ts'
-import { MESSAGE_TYPES, type CommandMessageType } from '../services/messaging.ts'
+import { MESSAGE_TYPES, sendMessage, type CommandMessageType } from '../services/messaging.ts'
 import { getSettings, isAssistanceActive, onSettingsChanged, updateSettings } from '../services/settings.ts'
+import { getDefaultShortcuts } from '../services/shortcuts.ts'
 import { watchTheme } from '../services/theme.ts'
 import { logDebug as log } from '../utils/debugLog.ts'
 import { lookup } from '../utils/lookup.ts'
 import { createInputFieldObserver } from './inputFieldObserver.ts'
 import { createLazyInlineSuggestions } from './lazyInlineSuggestions.ts'
+import { matchesShortcut } from './shortcutFallback.ts'
 import { getPageHostname, getSiteAdapter } from './siteAdapters.ts'
 import { createTextChangeDetector } from './textChangeDetector.ts'
 import { createTextChecker } from './textChecker.ts'
@@ -101,12 +103,25 @@ const SHORTCUT_HANDLERS: Record<CommandMessageType, () => void> = {
   [MESSAGE_TYPES.openAllSuggestions]: () => inlineSuggestions.openAllFromKeyboard(),
 }
 
+const DEFAULT_SHORTCUTS = getDefaultShortcuts()
+const IS_MAC = navigator.userAgent.includes('Mac')
+
+// Chrome leaves a shortcut unset when another extension in the profile already had its key, so the page reports the
+// default keys too; the service worker acts on them only while the shortcut is unset, so a press never counts twice.
+// Key presses a page makes up are ignored, because the shortcut can send the field's text to the AI provider.
+const handleShortcutFallback = (event: KeyboardEvent) => {
+  if (!event.isTrusted || event.repeat) return
+  const match = DEFAULT_SHORTCUTS.find(({ shortcut }) => matchesShortcut(event, shortcut, IS_MAC))
+  if (match) sendMessage(MESSAGE_TYPES.runShortcutFallback, { command: match.command }).catch(() => {})
+}
+
 // A page can match both the manifest and a site the user added, which would otherwise run this script twice.
 if (!globalThis.writeBetterStarted) {
   globalThis.writeBetterStarted = true
   chrome.runtime.onMessage.addListener((message: { type?: unknown } | null | undefined) => {
     lookup(SHORTCUT_HANDLERS, message?.type)?.()
   })
+  addEventListener('keydown', handleShortcutFallback, true)
   onSettingsChanged(handleSettingsChanged)
   getSettings().then(applySettings)
 }

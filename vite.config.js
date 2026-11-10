@@ -9,7 +9,7 @@ const FIXED_NAME_ENTRIES = new Set(['serviceWorker'])
 // These run inside web pages, so they have size budgets. content.js loads on every supported page; inlineUi.js only
 // when there is something to show. Going over usually means an engine was imported by mistake.
 const PAGE_SCRIPTS = [
-  { entry: 'src/content/main.ts', fileName: 'content.js', budgetBytes: 12_500 },
+  { entry: 'src/content/main.ts', fileName: 'content.js', budgetBytes: 13_500 },
   { entry: 'src/content/inlineUi.ts', fileName: 'inlineUi.js', budgetBytes: 38_000 },
 ]
 

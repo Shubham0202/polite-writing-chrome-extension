@@ -7,11 +7,13 @@ import DelayField from './components/DelayField.tsx'
 import IgnoredWordList from './components/IgnoredWordList.tsx'
 import PrivacySummary from './components/PrivacySummary.tsx'
 import SettingsSection from './components/SettingsSection.tsx'
+import ShortcutList from './components/ShortcutList.tsx'
 import SiteList from './components/SiteList.tsx'
 import ThemeField from './components/ThemeField.tsx'
 import { useAiSettings } from './hooks/useAiSettings.ts'
 import { useCustomSites } from './hooks/useCustomSites.ts'
 import { useIgnoredWords } from './hooks/useIgnoredWords.ts'
+import { useShortcuts } from './hooks/useShortcuts.ts'
 
 interface CheckSwitch {
   key: 'isSpellingEnabled' | 'isGrammarEnabled' | 'isPoliteEnabled' | 'isProfessionalEnabled'
@@ -29,6 +31,7 @@ const Options = () => {
   const { settings, updateSettings } = useSettings()
   const ignoredWords = useIgnoredWords()
   const aiSettings = useAiSettings()
+  const shortcuts = useShortcuts()
   const { error, addSite, removeSite } = useCustomSites(settings)
 
   if (!settings) return null
@@ -70,6 +73,10 @@ const Options = () => {
           disabled={!settings.isInlineEnabled}
           onChange={(isCloseOnAcceptEnabled) => updateSettings({ isCloseOnAcceptEnabled })}
         />
+      </SettingsSection>
+
+      <SettingsSection title="Keyboard shortcuts" description="Chrome keeps these separately for each profile.">
+        <ShortcutList shortcuts={shortcuts ?? []} />
       </SettingsSection>
 
       <SettingsSection title="Websites" description="Turn a site off to pause suggestions there.">

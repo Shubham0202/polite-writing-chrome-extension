@@ -22,6 +22,7 @@ import {
 } from '../services/messaging.ts'
 import { isOnlineGrammarAllowed } from '../services/onlineGrammar.ts'
 import { getSettings, onSettingsChanged } from '../services/settings.ts'
+import { isShortcutUnset } from '../services/shortcuts.ts'
 import { createWritingEnhancer, type RewriteRequest } from '../services/writingEnhancer.ts'
 import { UserFacingError } from '../utils/errors.ts'
 import { lookup } from '../utils/lookup.ts'
@@ -68,6 +69,14 @@ const MESSAGE_SENDER_ROLES: Record<RequestMessageType, readonly (SenderRole | nu
   [MESSAGE_TYPES.runRewrite]: [SENDER_ROLES.extensionPage, SENDER_ROLES.contentScript],
   [MESSAGE_TYPES.cancelRewrite]: [SENDER_ROLES.extensionPage, SENDER_ROLES.contentScript],
   [MESSAGE_TYPES.loadInlineUi]: [SENDER_ROLES.contentScript],
+  [MESSAGE_TYPES.runShortcutFallback]: [SENDER_ROLES.contentScript],
+}
+
+const sendCommandToTab = (command: string, tabId: number | undefined) => {
+  const type = lookup(COMMAND_MESSAGES, command)
+  if (!type || !tabId) return
+  // Tabs without a supported site have no content script to answer.
+  chrome.tabs.sendMessage(tabId, { type }).catch(() => {})
 }
 
 const isAllowedSender = (type: unknown, sender: MessageSenderInfo | undefined) => lookup(MESSAGE_SENDER_ROLES, type)?.includes(getRole(sender)) ?? false
@@ -95,6 +104,10 @@ const MESSAGE_HANDLERS: MessageHandlers = {
   [MESSAGE_TYPES.loadInlineUi]: async (_payload, { tab, frameId }) => {
     await chrome.scripting.executeScript({ target: { tabId: tab!.id!, frameIds: [frameId!] }, files: ['inlineUi.js'] })
   },
+  // While the shortcut has a key, to this one or another, Chrome runs the command itself.
+  [MESSAGE_TYPES.runShortcutFallback]: async (payload, { tab }) => {
+    if (typeof payload?.command === 'string' && (await isShortcutUnset(payload.command))) sendCommandToTab(payload.command, tab?.id)
+  },
 }
 
 // Changes are queued, because two running at once would both try to register the same script.
@@ -113,12 +126,7 @@ onSettingsChanged((settings, previous) => {
   if (settings.customSites.join() !== previous.customSites.join()) queueSiteSync(settings)
 })
 
-chrome.commands.onCommand.addListener((command: string, tab?: chrome.tabs.Tab) => {
-  const type = lookup(COMMAND_MESSAGES, command)
-  if (!type || !tab?.id) return
-  // Tabs without a supported site have no content script to answer.
-  chrome.tabs.sendMessage(tab.id, { type }).catch(() => {})
-})
+chrome.commands.onCommand.addListener((command: string, tab?: chrome.tabs.Tab) => sendCommandToTab(command, tab?.id))
 
 // What arrives over the channel is unchecked, so every field is optional and unknown.
 interface IncomingMessage {

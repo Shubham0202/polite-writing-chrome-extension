@@ -13,6 +13,7 @@ export const MESSAGE_TYPES = Object.freeze({
   loadInlineUi: 'LOAD_INLINE_UI',
   runRewrite: 'RUN_REWRITE',
   cancelRewrite: 'CANCEL_REWRITE',
+  runShortcutFallback: 'RUN_SHORTCUT_FALLBACK',
 })
 
 export type MessageType = (typeof MESSAGE_TYPES)[keyof typeof MESSAGE_TYPES]
@@ -43,6 +44,8 @@ export interface MessageContract {
   [MESSAGE_TYPES.runRewrite]: { payload: { text: string; style: RewriteStyle; clientId?: string }; result: RewriteResult }
   // A popup names its own request; the page has only one, so it sends no payload.
   [MESSAGE_TYPES.cancelRewrite]: { payload: { clientId?: string } | undefined; result: void }
+  // A page saw the default key of a shortcut that Chrome may have left unset.
+  [MESSAGE_TYPES.runShortcutFallback]: { payload: { command: string }; result: void }
 }
 
 export type RequestMessageType = keyof MessageContract
