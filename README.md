@@ -168,7 +168,13 @@ The list also has a **Rewrite with AI** switch, off by default and the same as t
 
 ### Settings
 
-Open **Settings** from the popup, or from the extension's menu.
+Open Settings in any of these ways:
+
+- Click the WriteBetter icon, then **Settings** in the popup.
+- Right-click the WriteBetter icon and choose **Options**.
+- Go to `chrome://extensions`, open WriteBetter's **Details** and choose **Extension options**.
+
+Changes save as soon as you make them. Only the AI provider, key and model need **Save**.
 
 | Setting | What it does |
 |---------|--------------|
