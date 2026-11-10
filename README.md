@@ -43,11 +43,12 @@ To install it, build it from source and load it in Chrome: see [Setup](#setup) a
 npm install
 npm run build      # one-off production build into dist/
 npm run dev        # rebuilds dist/ on every file change
-npm test           # unit tests for every engine and the pipeline (Node's built-in test runner)
+npm test           # unit tests for every engine and the pipeline (Node's built-in test runner, with tsx for TypeScript)
 npm run lint
+npm run typecheck  # TypeScript, strict; JavaScript files still being converted are not checked
 ```
 
-`dist/` and `node_modules/` are not committed (see `.gitignore`), so after cloning, run `npm install` and `npm run build` before loading the extension. Run `npm test` and `npm run lint` before committing.
+`dist/` and `node_modules/` are not committed (see `.gitignore`), so after cloning, run `npm install` and `npm run build` before loading the extension. Run `npm test`, `npm run lint` and `npm run typecheck` before committing.
 
 ## Load the extension in Chrome
 

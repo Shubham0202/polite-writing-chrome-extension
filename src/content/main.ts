@@ -1,0 +1,108 @@
+import { ENGINE_STATUS } from '../constants/corrections.ts'
+import { DEFAULT_SETTINGS, type Settings } from '../constants/settings.ts'
+import type { InlineCheckResult } from '../services/correctionPipeline.ts'
+import { MESSAGE_TYPES, type CommandMessageType } from '../services/messaging.ts'
+import { getSettings, isAssistanceActive, onSettingsChanged, updateSettings } from '../services/settings.ts'
+import { logDebug as log } from '../utils/debugLog.ts'
+import { lookup } from '../utils/lookup.ts'
+import { createInputFieldObserver } from './inputFieldObserver.ts'
+import { createLazyInlineSuggestions } from './lazyInlineSuggestions.ts'
+import { getPageHostname, getSiteAdapter } from './siteAdapters.ts'
+import { createTextChangeDetector } from './textChangeDetector.ts'
+import { createTextChecker } from './textChecker.ts'
+
+declare global {
+  var writeBetterStarted: boolean | undefined
+}
+
+type ToggleSettingKey = 'isAiShortcutEnabled' | 'isCloseOnAcceptEnabled'
+
+const CHECK_SETTINGS: (keyof Settings)[] = ['isSpellingEnabled', 'isGrammarEnabled', 'isPoliteEnabled', 'isProfessionalEnabled']
+
+const summarizeResult = ({ suggestions, toneAlternatives, engines }: InlineCheckResult): string =>
+  JSON.stringify({
+    suggestions: suggestions.map(({ engine }) => engine),
+    toneAlternatives: Object.entries(toneAlternatives).map(([tone, alternatives]) => `${tone}: ${alternatives.length}`),
+    engines: engines.filter(({ status }) => status !== ENGINE_STATUS.used).map(({ label, status }) => `${label}: ${status}`),
+  })
+
+let settings = DEFAULT_SETTINGS
+
+const inlineSuggestions = createLazyInlineSuggestions({
+  onUnavailable: (reason) => log(`Suggestions unavailable: ${reason}`),
+})
+
+const checkText = createTextChecker({
+  onResult: (result) => {
+    log(`Check finished: ${summarizeResult(result)}`)
+    inlineSuggestions.showResult(result)
+  },
+  onEmpty: () => {
+    log('Check skipped: no text')
+    inlineSuggestions.clear()
+  },
+  onRejected: (reason) => {
+    log(`Check skipped: ${reason}`)
+    inlineSuggestions.showNotice(reason)
+  },
+  onFailed: (reason) => log(`Check failed: ${reason}`),
+  onDisconnected: () => inputFieldObserver.stop(),
+})
+
+const textChangeDetector = createTextChangeDetector({
+  onTextReady: checkText,
+  onTextChanged: inlineSuggestions.handleTextChanged,
+  getDelayMs: () => settings.delayMs,
+})
+
+const inputFieldObserver = createInputFieldObserver({
+  isOwnElement: inlineSuggestions.isOwnElement,
+  siteAdapter: getSiteAdapter(getPageHostname()),
+  onFieldActivated: (field, kind) => {
+    log(`Watching ${kind} field`, field)
+    inlineSuggestions.attach(field, kind)
+    textChangeDetector.watch(field, kind)
+  },
+  onFieldDeactivated: (field, reason) => {
+    textChangeDetector.unwatch()
+    inlineSuggestions.detach()
+    log(`Stopped watching field (${reason})`, field)
+  },
+  onFieldSkipped: (field, reason) => log(`Skipped field (${reason})`, field),
+  onStopped: inlineSuggestions.destroy,
+})
+
+// The switches in the suggestion list are the ones in Settings; flipping either changes the stored setting.
+const toggleSetting = (key: ToggleSettingKey) => () => updateSettings({ [key]: !settings[key] }).catch(() => {})
+const toggleAiShortcut = toggleSetting('isAiShortcutEnabled')
+const toggleCloseOnAccept = toggleSetting('isCloseOnAcceptEnabled')
+
+// While paused the page has no listeners at all: nothing is watched, rather than being watched and ignored.
+const applySettings = (newSettings: Settings): void => {
+  settings = newSettings
+  inlineSuggestions.setAiShortcut({ isEnabled: settings.isAiShortcutEnabled, style: settings.aiShortcutStyle, onToggle: toggleAiShortcut })
+  inlineSuggestions.setCloseOnAccept({ isEnabled: settings.isCloseOnAcceptEnabled, onToggle: toggleCloseOnAccept })
+  if (isAssistanceActive(settings, getPageHostname())) inputFieldObserver.start()
+  else inputFieldObserver.stop()
+}
+
+const handleSettingsChanged = (newSettings: Settings, previous: Settings): void => {
+  applySettings(newSettings)
+  if (CHECK_SETTINGS.some((key) => newSettings[key] !== previous[key])) textChangeDetector.recheck()
+}
+
+// What each keyboard shortcut, relayed by the service worker, asks the page to do.
+const SHORTCUT_HANDLERS: Record<CommandMessageType, () => void> = {
+  [MESSAGE_TYPES.openSuggestion]: () => inlineSuggestions.openFromKeyboard(),
+  [MESSAGE_TYPES.openAllSuggestions]: () => inlineSuggestions.openAllFromKeyboard(),
+}
+
+// A page can match both the manifest and a site the user added, which would otherwise run this script twice.
+if (!globalThis.writeBetterStarted) {
+  globalThis.writeBetterStarted = true
+  chrome.runtime.onMessage.addListener((message: { type?: unknown } | null | undefined) => {
+    lookup(SHORTCUT_HANDLERS, message?.type)?.()
+  })
+  onSettingsChanged(handleSettingsChanged)
+  getSettings().then(applySettings)
+}

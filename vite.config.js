@@ -9,8 +9,8 @@ const FIXED_NAME_ENTRIES = new Set(['serviceWorker'])
 // These run inside web pages, so they have size budgets. content.js loads on every supported page; inlineUi.js only
 // when there is something to show. Going over usually means an engine was imported by mistake.
 const PAGE_SCRIPTS = [
-  { entry: 'src/content/main.js', fileName: 'content.js', budgetBytes: 12_000 },
-  { entry: 'src/content/inlineUi.js', fileName: 'inlineUi.js', budgetBytes: 38_000 },
+  { entry: 'src/content/main.ts', fileName: 'content.js', budgetBytes: 12_000 },
+  { entry: 'src/content/inlineUi.ts', fileName: 'inlineUi.js', budgetBytes: 38_000 },
 ]
 
 // Scripts in pages load as classic scripts and cannot import shared chunks, so each one is bundled on its own into a
@@ -67,7 +67,7 @@ export default defineConfig({
       input: {
         popup: resolve(import.meta.dirname, 'popup.html'),
         options: resolve(import.meta.dirname, 'options.html'),
-        serviceWorker: resolve(import.meta.dirname, 'src/background/serviceWorker.js'),
+        serviceWorker: resolve(import.meta.dirname, 'src/background/serviceWorker.ts'),
       },
       output: {
         entryFileNames: (chunk) =>
