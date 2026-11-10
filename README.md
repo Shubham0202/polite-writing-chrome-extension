@@ -57,19 +57,15 @@ Unlike tools that send everything you type to a server, WriteBetter:
 
 ## 📸 Screenshots
 
-_Screenshots and a short demo are coming soon._
-
-<!--
-Add the files to screenshots/, then remove this comment and the line above.
-
 <p align="center">
-  <img src="./screenshots/demo.gif" alt="WriteBetter underlining mistakes in a message and fixing them with Accept" width="720">
+  <img src="./screenshots/demo.gif" alt="Typing hello chatgpt hows your day today in ChatGPT, pressing Ctrl+Shift+Space to list the suggestions while the AI rewrite loads, and accepting the rewrite: Hello ChatGPT, I wanted to ask how your day is going today?" width="640">
 </p>
+<p align="center"><em>Ctrl+Shift+Space on ChatGPT, added as a site in Settings: the list shows every suggestion while the AI rewrite loads, and Accept replaces the text.</em></p>
 
-| Suggestions as you type | The popup | Ctrl+Shift+Space with an AI rewrite |
-|:---:|:---:|:---:|
-| <img src="./screenshots/inline-suggestions.png" alt="Suggestion card above an underlined word" width="260"> | <img src="./screenshots/popup.png" alt="Popup with the corrected text and each change" width="260"> | <img src="./screenshots/suggestion-list.png" alt="List of every suggestion in a field, with the AI rewrite first" width="260"> |
--->
+| AI rewrite: improve wording | AI rewrite: polite tone |
+|:---:|:---:|
+| <img src="./screenshots/ai-rewrite-improve-wording.png" alt="Suggestion list in a Gmail message: hello how are you can you tell me about your day is rewritten as Hello! How are you? Can you tell me about your day?" width="400"> | <img src="./screenshots/ai-rewrite-polite.png" alt="Suggestion list in a Gmail message: an AI rewrite in the polite tone, listed above the capitalization and punctuation fixes" width="400"> |
+| The rewrite fixes the wording, then the local capitalization and punctuation fixes follow | The same list with the **polite** tone: the rewrite is marked *Rewritten to sound more polite* |
 
 ## 📝 Before and after
 
@@ -337,7 +333,8 @@ vite.config.js                  Build: popup, settings page and service worker, 
                                 as single files with size budgets
 eslint.config.js                Lint rules for browser and extension code
 dist/                           Build output loaded into Chrome (generated, not committed)
-docs/                           Images used in this README
+docs/                           Diagram used in this README
+screenshots/                    Screenshots and the demo GIF used in this README
 src/
   background/serviceWorker.ts   Message router; runs the correction pipeline
   content/                      Content script for inline assistance: field detection and reading, change detection, checking, and the suggestion UI
