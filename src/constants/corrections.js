@@ -1,5 +1,8 @@
 export const MAX_TEXT_LENGTH = 5000
 
+// nspell's suggestion search slows down sharply for long unknown words, so longer words are never checked.
+export const MAX_CHECKED_WORD_LENGTH = 20
+
 export const CORRECTION_ACTIONS = Object.freeze({
   fixGrammar: 'fix-grammar',
   makePolite: 'make-polite',

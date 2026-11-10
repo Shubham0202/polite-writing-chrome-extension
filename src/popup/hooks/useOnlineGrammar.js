@@ -1,18 +1,15 @@
 import { useEffect, useState } from 'react'
+import { getOnlineGrammarEnabled, setOnlineGrammarEnabled } from '../../services/onlineGrammar.js'
 
-const STORAGE_KEY = 'isOnlineGrammarEnabled'
-
-// Off until the user turns it on, because it sends their text to an outside service.
 export const useOnlineGrammar = () => {
   const [isEnabled, setIsEnabledState] = useState(false)
 
   useEffect(() => {
     let isCancelled = false
 
-    chrome.storage.local
-      .get(STORAGE_KEY)
-      .then((stored) => {
-        if (!isCancelled) setIsEnabledState(stored[STORAGE_KEY] === true)
+    getOnlineGrammarEnabled()
+      .then((isStoredEnabled) => {
+        if (!isCancelled) setIsEnabledState(isStoredEnabled)
       })
       // A setting that cannot be read stays off, so text is never sent out by accident.
       .catch(() => {})
@@ -24,7 +21,7 @@ export const useOnlineGrammar = () => {
 
   const setIsEnabled = (value) => {
     setIsEnabledState(value)
-    chrome.storage.local.set({ [STORAGE_KEY]: value }).catch(() => setIsEnabledState(false))
+    setOnlineGrammarEnabled(value).catch(() => setIsEnabledState(false))
   }
 
   return { isEnabled, setIsEnabled }

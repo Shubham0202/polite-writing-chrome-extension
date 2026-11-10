@@ -81,4 +81,13 @@ describe('custom site scripts', () => {
     await syncCustomSiteScripts({ customSites: ['example.com', 'other.com'] })
     assert.deepEqual(registered[0].matches, ['*://other.com/*'])
   })
+
+  it('leaves out stored entries that are not plain hostnames', async () => {
+    openTabs = [{ id: 1 }]
+    const customSites = ['example.com', '*://*/*', '<all_urls>', 'example.com/path', 'Example.org', 42, null, 'localhost']
+    await syncCustomSiteScripts({ customSites })
+    assert.deepEqual(registered[0].matches, ['*://example.com/*', '*://localhost/*'])
+    await injectIntoOpenTabs({ customSites })
+    assert.deepEqual(queriedPatterns, ['https://mail.google.com/*', 'https://chat.google.com/*', '*://example.com/*', '*://localhost/*'])
+  })
 })

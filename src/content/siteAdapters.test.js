@@ -1,6 +1,27 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
-import { getSiteAdapter } from './siteAdapters.js'
+import { afterEach, describe, it } from 'node:test'
+import { getPageHostname, getSiteAdapter } from './siteAdapters.js'
+
+describe('page hostname', () => {
+  afterEach(() => {
+    delete globalThis.location
+  })
+
+  it('uses the page itself when it is the top frame', () => {
+    globalThis.location = { ancestorOrigins: [], hostname: 'mail.google.com' }
+    assert.equal(getPageHostname(), 'mail.google.com')
+  })
+
+  it('follows the top page from inside a frame', () => {
+    globalThis.location = { ancestorOrigins: ['https://frame.example.com', 'https://mail.google.com'], hostname: '' }
+    assert.equal(getPageHostname(), 'mail.google.com')
+  })
+
+  it('matches no site when the top page has an opaque origin', () => {
+    globalThis.location = { ancestorOrigins: ['null'], hostname: 'mail.google.com' }
+    assert.equal(getPageHostname(), '')
+  })
+})
 
 describe('site adapters', () => {
   it('leaves quoted text out on Gmail', () => {

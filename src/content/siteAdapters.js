@@ -14,5 +14,11 @@ export const getSiteAdapter = (hostname) => lookup(SITE_ADAPTERS, hostname) ?? {
 // A frame follows the site it is on, and about:blank frames have no hostname of their own.
 export const getPageHostname = () => {
   const { ancestorOrigins, hostname } = location
-  return ancestorOrigins.length ? new URL(ancestorOrigins[ancestorOrigins.length - 1]).hostname : hostname
+  if (!ancestorOrigins.length) return hostname
+  try {
+    return new URL(ancestorOrigins[ancestorOrigins.length - 1]).hostname
+  } catch {
+    // A sandboxed or data: top page has an opaque origin, listed as "null"; it matches no site, so checks stay off.
+    return ''
+  }
 }

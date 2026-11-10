@@ -1,7 +1,7 @@
 /** @author Shubham Chandgude <shubham826852@gmail.com> */
 
 import nspell from 'nspell'
-import { CATEGORIES, CONFIDENCE, ENGINES, SOURCES } from '../../constants/corrections.js'
+import { CATEGORIES, CONFIDENCE, ENGINES, MAX_CHECKED_WORD_LENGTH, SOURCES } from '../../constants/corrections.js'
 import { lookup } from '../../utils/lookup.js'
 import { findProtectedRanges, isSentenceStart, matchCase, normalizeApostrophes, tokenizeWords } from '../../utils/textUtils.js'
 import { createSuggestion } from '../suggestion.js'
@@ -9,8 +9,6 @@ import { VERB_FORMS, findVerbByForm } from '../tense/verbLexicon.js'
 import { COMMON_MISSPELLINGS } from './commonMisspellings.js'
 
 const MAX_SUGGESTIONS = 3
-// nspell's suggestion search slows down sharply for long unknown words.
-const MAX_CHECKED_WORD_LENGTH = 20
 // nspell needs 15–100 ms per unknown word; past this budget the rest of a long text is left unchecked.
 const SUGGESTION_BUDGET_MS = 1500
 // Beyond this many edits the guess is usually a different word. A short word allows only one, since two edits

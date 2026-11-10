@@ -32,6 +32,18 @@ const getExtensionPagePath = (sender) => {
 // their page path tells them apart, and a reopened popup takes over from the one that was closed.
 export const getSenderKey = (sender) => (sender?.tab ? `${sender.tab.id}:${sender.frameId}` : getExtensionPagePath(sender))
 
+export const SENDER_ROLES = Object.freeze({
+  extensionPage: 'extension-page',
+  contentScript: 'content-script',
+})
+
+// Settings opens in a tab, so a tab alone does not mean a content script: extension pages load from the extension's
+// own address, while a content script reports the web page it runs in.
+export const getSenderRole = (sender, extensionUrl) => {
+  if (sender?.url?.startsWith(extensionUrl)) return SENDER_ROLES.extensionPage
+  return sender?.tab ? SENDER_ROLES.contentScript : null
+}
+
 const sendRuntimeMessage = async (message) => {
   try {
     return await chrome.runtime.sendMessage(message)
