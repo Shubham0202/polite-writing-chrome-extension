@@ -33,7 +33,7 @@ const Options = () => {
   const ignoredWords = useIgnoredWords()
   const aiSettings = useAiSettings()
   const shortcuts = useShortcuts()
-  const { error, addSite, removeSite } = useCustomSites(settings)
+  const { error, sitesWithoutAccess, addSite, allowAgain, removeSite } = useCustomSites(settings)
 
   if (!settings) return null
 
@@ -81,7 +81,15 @@ const Options = () => {
       </SettingsSection>
 
       <SettingsSection title="Websites" description="Turn a site off to pause suggestions there.">
-        <SiteList settings={settings} error={error} onUpdate={updateSettings} onAdd={addSite} onRemove={removeSite} />
+        <SiteList
+          settings={settings}
+          error={error}
+          sitesWithoutAccess={sitesWithoutAccess}
+          onUpdate={updateSettings}
+          onAdd={addSite}
+          onAllowAgain={allowAgain}
+          onRemove={removeSite}
+        />
       </SettingsSection>
 
       <SettingsSection title="Ignored words" description="Spelling suggestions skip these words, on websites and in the popup.">

@@ -3,11 +3,17 @@ import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import { COMMAND_MESSAGES, SENDER_ROLES, getSenderKey, getSenderRole } from './messaging.ts'
 
-const { commands } = JSON.parse(readFileSync(new URL('../../public/manifest.json', import.meta.url), 'utf8'))
+const { commands, externally_connectable } = JSON.parse(readFileSync(new URL('../../public/manifest.json', import.meta.url), 'utf8'))
 
 describe('keyboard shortcuts', () => {
   it('sends a message to the page for every command in the manifest, and no other', () => {
     assert.deepEqual(Object.keys(COMMAND_MESSAGES).sort(), Object.keys(commands).sort())
+  })
+})
+
+describe('outside senders', () => {
+  it('accepts messages from no other extension and no website', () => {
+    assert.deepEqual(externally_connectable, { ids: [] })
   })
 })
 

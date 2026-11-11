@@ -45,6 +45,7 @@
     "https://*.atlassian.net/*"
   ],
   "optional_host_permissions": ["http://localhost:8081/*", "*://*/*"],
+  "externally_connectable": { "ids": [] },
   "content_scripts": [
     {
       "matches": [

@@ -7,12 +7,16 @@ import { getSiteRows, isSitePaused, setSitePaused } from '../../services/setting
 interface SiteListProps {
   settings: Settings
   error: string | null
+  sitesWithoutAccess: readonly string[]
   onUpdate: (changes: Partial<Settings>) => Promise<void>
   onAdd: (input: string) => Promise<boolean>
+  onAllowAgain: (hostname: string) => Promise<boolean>
   onRemove: (hostname: string) => Promise<void>
 }
 
-const SiteList = ({ settings, error, onUpdate, onAdd, onRemove }: SiteListProps) => {
+const ACCESS_REMOVED_DESCRIPTION = 'Access removed in Chrome. Allow again to use WriteBetter here.'
+
+const SiteList = ({ settings, error, sitesWithoutAccess, onUpdate, onAdd, onAllowAgain, onRemove }: SiteListProps) => {
   const [input, setInput] = useState('')
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => setInput(event.target.value)
@@ -25,22 +29,33 @@ const SiteList = ({ settings, error, onUpdate, onAdd, onRemove }: SiteListProps)
   return (
     <div className="flex flex-col gap-3">
       <ul className="flex flex-col gap-2">
-        {getSiteRows(settings).map(({ hostname, label, isCustom }) => (
-          <li key={hostname} className="flex items-start justify-between gap-2">
-            <SwitchField
-              id={`site-${hostname}`}
-              label={label}
-              description={label === hostname ? null : hostname}
-              checked={!isSitePaused(settings, hostname)}
-              onChange={(isEnabled) => onUpdate({ pausedSites: setSitePaused(settings, hostname, !isEnabled) })}
-            />
-            {isCustom && (
-              <Button variant="ghost" className="px-2 py-1 text-xs" aria-label={`Remove ${hostname}`} onClick={() => onRemove(hostname)}>
-                Remove
-              </Button>
-            )}
-          </li>
-        ))}
+        {getSiteRows(settings).map(({ hostname, label, isCustom }) => {
+          const isWithoutAccess = Boolean(isCustom) && sitesWithoutAccess.includes(hostname)
+          return (
+            <li key={hostname} className="flex items-start justify-between gap-2">
+              <SwitchField
+                id={`site-${hostname}`}
+                label={label}
+                description={isWithoutAccess ? ACCESS_REMOVED_DESCRIPTION : label === hostname ? null : hostname}
+                checked={!isSitePaused(settings, hostname)}
+                disabled={isWithoutAccess}
+                onChange={(isEnabled) => onUpdate({ pausedSites: setSitePaused(settings, hostname, !isEnabled) })}
+              />
+              {isCustom && (
+                <div className="flex shrink-0 gap-1">
+                  {isWithoutAccess && (
+                    <Button variant="ghost" className="px-2 py-1 text-xs" aria-label={`Allow ${hostname} again`} onClick={() => onAllowAgain(hostname)}>
+                      Allow again
+                    </Button>
+                  )}
+                  <Button variant="ghost" className="px-2 py-1 text-xs" aria-label={`Remove ${hostname}`} onClick={() => onRemove(hostname)}>
+                    Remove
+                  </Button>
+                </div>
+              )}
+            </li>
+          )
+        })}
       </ul>
       <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
         <label htmlFor="site-input" className="text-sm font-medium text-slate-700 dark:text-neutral-200">

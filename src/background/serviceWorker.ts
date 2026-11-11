@@ -1,4 +1,4 @@
-import { LOCAL_LANGUAGE_TOOL, type Settings } from '../constants/settings.ts'
+import { LOCAL_LANGUAGE_TOOL } from '../constants/settings.ts'
 import { EN_DICTIONARY } from '../engines/spelling/dictionary.ts'
 import { createSpellChecker, type SpellChecker } from '../engines/spelling/spellChecker.ts'
 import { getActiveKeySlot, getAiSettings, isAiConfigured, setActiveKeySlot } from '../services/aiSettings.ts'
@@ -22,7 +22,8 @@ import {
   type SenderRole,
 } from '../services/messaging.ts'
 import { isOnlineGrammarAllowed } from '../services/onlineGrammar.ts'
-import { getSettings, onSettingsChanged } from '../services/settings.ts'
+import { findSettingsWithoutAccess } from '../services/permissionSync.ts'
+import { getSettings, onSettingsChanged, updateSettings } from '../services/settings.ts'
 import { isShortcutUnset } from '../services/shortcuts.ts'
 import { createWritingEnhancer, type RewriteRequest } from '../services/writingEnhancer.ts'
 import { devError } from '../utils/devLog.ts'
@@ -113,22 +114,39 @@ const MESSAGE_HANDLERS: MessageHandlers = {
   },
 }
 
-// Changes are queued, because two running at once would both try to register the same script.
+// Changes are queued, because two running at once would both try to register the same script. Each one reads the
+// settings when its turn comes: adding a site changes both its access and the settings, and the last sync must see both.
 let siteSync = Promise.resolve()
-const queueSiteSync = (settings: Settings) => {
+const queueSiteSync = () => {
   // A failed sync must not stop the ones queued after it; the next change of sites registers them again.
-  siteSync = siteSync.then(() => syncCustomSiteScripts(settings)).catch(() => {})
+  siteSync = siteSync.then(async () => syncCustomSiteScripts(await getSettings())).catch(() => {})
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
   const settings = await getSettings()
-  queueSiteSync(settings)
+  queueSiteSync()
   // Tabs it could not reach get the script when they are next loaded.
   await injectIntoOpenTabs(settings).catch(() => {})
 })
 
 onSettingsChanged((settings, previous) => {
-  if (settings.customSites.join() !== previous.customSites.join()) queueSiteSync(settings)
+  if (settings.customSites.join() !== previous.customSites.join()) queueSiteSync()
+})
+
+// Access also changes in chrome://extensions. An added site keeps its registration while its access is gone: Chrome
+// does not run the script there meanwhile, and runs it again once the access is back. New access registers sites that
+// were left out while they had none; the sites stay listed throughout, so Settings can offer to allow them again.
+chrome.permissions.onAdded.addListener(() => queueSiteSync())
+
+// The local server's switch turns off once its access is gone, so Settings shows what really works. Turning it off in
+// Settings lands here too; by then nothing is left to change.
+chrome.permissions.onRemoved.addListener(async () => {
+  try {
+    const changes = await findSettingsWithoutAccess(await getSettings())
+    if (Object.keys(changes).length) await updateSettings(changes)
+  } catch (error) {
+    devError('Could not update settings after access was removed', error)
+  }
 })
 
 chrome.commands.onCommand.addListener((command: string, tab?: chrome.tabs.Tab) => sendCommandToTab(command, tab?.id))

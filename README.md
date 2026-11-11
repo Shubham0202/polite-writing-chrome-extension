@@ -186,9 +186,9 @@ Changes save as soon as you make them. Only the AI provider, keys and model need
 | Delay | How long to wait after you stop typing, from 0.5 to 3 seconds. The default is 1 second |
 | Close the suggestion list after Accept | Off by default. Accepting an AI rewrite always closes the Ctrl+Shift+Space list; with this on, accepting any suggestion does too. The list has the same switch |
 | Keyboard shortcuts | The key Chrome has for each shortcut in this profile, a warning when one is not set, and **Change shortcuts**, which opens `chrome://extensions/shortcuts` |
-| Websites | Turn a site off to pause it there, or add one. Chrome asks for access to that site only, and removing the site gives that access back |
+| Websites | Turn a site off to pause it there, or add one. Chrome asks for access to that site only, and removing the site gives that access back. If that access is taken away in `chrome://extensions`, the site stays listed, marked **Access removed**, with **Allow again** to ask Chrome for it once more |
 | Ignored words | The personal dictionary. Words can be removed here |
-| LanguageTool on this computer | **Use a LanguageTool server on this computer**, off by default. Turn it on only if you run a LanguageTool server yourself; Chrome then asks for access to `http://localhost:8081`. See [Local LanguageTool server](#local-languagetool-server-optional) |
+| LanguageTool on this computer | **Use a LanguageTool server on this computer**, off by default. Turn it on only if you run a LanguageTool server yourself; Chrome then asks for access to `http://localhost:8081`, and taking that access away in `chrome://extensions` turns the switch off. See [Local LanguageTool server](#local-languagetool-server-optional) |
 | AI rewriting | The provider, API key, optional backup API key and model that **Rewrite with AI** uses, and whether Ctrl+Shift+Space rewrites with AI on websites and in which style. Optional; the keys stay on this computer and **Remove key** (**Remove keys** once a backup key is saved) deletes them |
 | Appearance | Light, dark, or matching your system, for the popup, Settings and the suggestions on websites |
 | Privacy | A summary of what is checked on this computer, what is sent where, and what is saved |
@@ -303,7 +303,7 @@ A LanguageTool server you run yourself listens on `localhost`, so using it sends
 - **Saved in Chrome's local extension storage, on this computer:** your settings, the Online grammar check switch, your ignored words and, if you add them, your AI API key and backup API key, and which of the two keys is in use. The keys are not encrypted and not synced to your Google account; they are only ever sent to the provider you chose, in a request header over HTTPS, and **Remove key** deletes them. Removing the extension deletes all of it.
 - **Never watched:** password, payment, one-time-code, read-only and code-editor fields.
 - **Kept away from the page:** the suggestion UI lives in a closed Shadow DOM, so sites cannot restyle it or read the text in it.
-- **Not trusted from the page:** messages to the background service are only accepted from the part of the extension that really sends them, and key presses a page fakes never trigger a shortcut.
+- **Not trusted from the page:** messages to the background service are only accepted from the part of the extension that really sends them, no other extension or website can message it at all, and key presses a page fakes never trigger a shortcut.
 
 When you use an online service, its own terms and privacy policy apply: see [LanguageTool's](https://languagetool.org/legal/privacy) and your AI provider's before sending work messages. Like any web request, these services also see your IP address.
 

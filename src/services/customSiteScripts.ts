@@ -1,4 +1,5 @@
 import type { Settings } from '../constants/settings.ts'
+import { isGranted } from './permissionSync.ts'
 import { parseSiteInput, toMatchPattern } from './settings.ts'
 
 interface ManifestContentScript {
@@ -6,8 +7,6 @@ interface ManifestContentScript {
 }
 
 const SCRIPT_ID = 'custom-sites'
-
-const isGranted = (pattern: string): Promise<boolean> => chrome.permissions.contains({ origins: [pattern] })
 
 // Only hostnames the settings page would accept become match patterns, whatever else may have ended up in storage.
 const toCustomSitePatterns = (customSites: string[]): string[] =>
