@@ -13,7 +13,7 @@ interface ActiveField {
 }
 
 export interface LazyInlineSuggestionsOptions {
-  onUnavailable: (reason: string) => void
+  onUnavailable?: (reason: string) => void
 }
 
 export interface LazyInlineSuggestions {
@@ -37,7 +37,7 @@ const hasSomethingToShow = ({ suggestions, toneAlternatives }: InlineCheckResult
 
 // Stands in for the suggestion manager, which is only injected once there is something to show, so pages where the
 // user just reads never load it. Before that, there is nothing on the page for the other calls to act on.
-export const createLazyInlineSuggestions = ({ onUnavailable }: LazyInlineSuggestionsOptions): LazyInlineSuggestions => {
+export const createLazyInlineSuggestions = ({ onUnavailable }: LazyInlineSuggestionsOptions = {}): LazyInlineSuggestions => {
   let manager: InlineSuggestionManager | null = null
   let loading: Promise<InlineSuggestionManager> | null = null
   let activeField: ActiveField | null = null
@@ -56,7 +56,7 @@ export const createLazyInlineSuggestions = ({ onUnavailable }: LazyInlineSuggest
     })
     return loading.catch((error: Error) => {
       loading = null
-      onUnavailable(error.message)
+      onUnavailable?.(error.message)
       return null
     })
   }

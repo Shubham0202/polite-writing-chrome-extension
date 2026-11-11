@@ -59,10 +59,7 @@ describe('writing enhancer', () => {
       setActiveKeySlot: async () => {},
       requestRewrite: async (request) => calls.push(request),
     })
-    const originalConsoleError = console.error
-    console.error = () => {}
     await assert.rejects(rewrite({ text: EXAMPLE, style: REWRITE_STYLES.polite }), assertUserFacing(/Could not read the AI settings/))
-    console.error = originalConsoleError
     assert.equal(calls.length, 0)
   })
 
@@ -342,10 +339,7 @@ describe('writing enhancer', () => {
           return limitedKeys('sk-first')(request)
         },
       })
-      const originalConsoleError = console.error
-      console.error = () => {}
       const result = await rewrite(polite)
-      console.error = originalConsoleError
       assert.deepEqual(calls, ['sk-first', 'sk-second'])
       assert.ok(result.suggestions.length > 0)
     })
@@ -369,10 +363,7 @@ describe('writing enhancer', () => {
           return rewriteReply
         },
       })
-      const originalConsoleError = console.error
-      console.error = () => {}
       const result = await rewrite(polite)
-      console.error = originalConsoleError
       assert.deepEqual(calls, ['sk-first'])
       assert.ok(result.suggestions.length > 0)
     })

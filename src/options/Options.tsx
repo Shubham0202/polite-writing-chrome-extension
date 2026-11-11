@@ -5,6 +5,7 @@ import AiSettingsForm from './components/AiSettingsForm.tsx'
 import AiShortcutSettings from './components/AiShortcutSettings.tsx'
 import DelayField from './components/DelayField.tsx'
 import IgnoredWordList from './components/IgnoredWordList.tsx'
+import LocalLanguageToolSetting from './components/LocalLanguageToolSetting.tsx'
 import PrivacySummary from './components/PrivacySummary.tsx'
 import SettingsSection from './components/SettingsSection.tsx'
 import ShortcutList from './components/ShortcutList.tsx'
@@ -85,6 +86,10 @@ const Options = () => {
 
       <SettingsSection title="Ignored words" description="Spelling suggestions skip these words, on websites and in the popup.">
         <IgnoredWordList words={ignoredWords} />
+      </SettingsSection>
+
+      <SettingsSection title="LanguageTool on this computer" description="Optional. Without it, grammar is checked with the built-in rules.">
+        <LocalLanguageToolSetting isEnabled={settings.isLocalLanguageToolEnabled} />
       </SettingsSection>
 
       <SettingsSection

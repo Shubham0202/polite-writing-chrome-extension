@@ -6,7 +6,7 @@ export interface TextCheckerOptions {
   onResult: (result: InlineCheckResult) => void
   onEmpty: () => void
   onRejected: (reason: string) => void
-  onFailed: (reason: string) => void
+  onFailed?: (reason: string) => void
   onDisconnected: () => void
 }
 
@@ -36,7 +36,7 @@ export const createTextChecker =
     } catch (error) {
       // After the extension is reloaded or removed, this copy of the script can no longer reach it.
       if (!chrome.runtime?.id) onDisconnected()
-      else if (!signal.aborted) onFailed((error as Error).message)
+      else if (!signal.aborted) onFailed?.((error as Error).message)
       return false
     } finally {
       signal.removeEventListener('abort', cancelCheck)

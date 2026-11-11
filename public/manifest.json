@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "WriteBetter",
+  "name": "WriteBetter – Polite Writing Assistant",
   "version": "0.1.0",
   "minimum_chrome_version": "116",
-  "description": "Local-first writing assistant: fix spelling, grammar, tense and tone without an AI key.",
+  "description": "Fix spelling, grammar, tense and tone as you write. Popup checks can use LanguageTool online; optional AI rewriting uses your key.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -38,15 +38,13 @@
   },
   "permissions": ["storage", "scripting"],
   "host_permissions": [
-    "http://localhost/*",
-    "http://127.0.0.1/*",
     "https://mail.google.com/*",
     "https://chat.google.com/*",
     "https://web.whatsapp.com/*",
     "https://www.linkedin.com/*",
     "https://*.atlassian.net/*"
   ],
-  "optional_host_permissions": ["*://*/*"],
+  "optional_host_permissions": ["http://localhost:8081/*", "*://*/*"],
   "content_scripts": [
     {
       "matches": [

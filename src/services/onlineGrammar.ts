@@ -1,8 +1,9 @@
 const STORAGE_KEY = 'isOnlineGrammarEnabled'
 
-// Off until the user turns it on, because it sends their text to an outside service.
+// On until the user turns it off. It only ever applies to the popup's Fix Grammar and Fix Everything buttons, which the
+// user presses on purpose; checks as you type never use it.
 export const getOnlineGrammarEnabled = async (): Promise<boolean> =>
-  (await chrome.storage.local.get<{ isOnlineGrammarEnabled?: unknown }>(STORAGE_KEY))[STORAGE_KEY] === true
+  (await chrome.storage.local.get<{ isOnlineGrammarEnabled?: unknown }>(STORAGE_KEY))[STORAGE_KEY] !== false
 
 export const setOnlineGrammarEnabled = (isEnabled: boolean): Promise<void> => chrome.storage.local.set({ [STORAGE_KEY]: isEnabled })
 

@@ -12,7 +12,7 @@ export type DeactivationReason = (typeof DEACTIVATION_REASONS)[keyof typeof DEAC
 export interface InputFieldObserverOptions {
   onFieldActivated: (field: HTMLElement, kind: FieldKind) => void
   onFieldDeactivated: (field: HTMLElement, reason: DeactivationReason) => void
-  onFieldSkipped: (field: HTMLElement, reason: SkipReason) => void
+  onFieldSkipped?: (field: HTMLElement, reason: SkipReason) => void
   onStopped?: () => void
   isOwnElement?: (element: Node | null) => boolean
   siteAdapter: SiteAdapter
@@ -80,7 +80,7 @@ export const createInputFieldObserver = ({
     if (!support || support.field === activeField) return
 
     deactivate(DEACTIVATION_REASONS.blur)
-    if (support.skipReason) onFieldSkipped(support.field, support.skipReason)
+    if (support.skipReason) onFieldSkipped?.(support.field, support.skipReason)
     else activate(support)
   }
 

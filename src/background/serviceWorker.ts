@@ -1,10 +1,11 @@
-import type { Settings } from '../constants/settings.ts'
+import { LOCAL_LANGUAGE_TOOL, type Settings } from '../constants/settings.ts'
 import { EN_DICTIONARY } from '../engines/spelling/dictionary.ts'
 import { createSpellChecker, type SpellChecker } from '../engines/spelling/spellChecker.ts'
 import { getActiveKeySlot, getAiSettings, isAiConfigured, setActiveKeySlot } from '../services/aiSettings.ts'
 import { createCorrectionPipeline, type CorrectionRequest } from '../services/correctionPipeline.ts'
 import { injectIntoOpenTabs, syncCustomSiteScripts } from '../services/customSiteScripts.ts'
 import { addIgnoredWord, getIgnoredWords } from '../services/ignoredWords.ts'
+import { isLocalLanguageToolAllowed } from '../services/localLanguageTool.ts'
 import { createInlineCheckRunner } from '../services/inlineCheckRunner.ts'
 import { createLatestRunner } from '../services/latestRunner.ts'
 import {
@@ -27,7 +28,7 @@ import { createWritingEnhancer, type RewriteRequest } from '../services/writingE
 import { UserFacingError } from '../utils/errors.ts'
 import { lookup } from '../utils/lookup.ts'
 
-const LANGUAGE_TOOL_OPTIONS = { serverUrl: 'http://localhost:8081', language: 'en-US' }
+const LANGUAGE_TOOL_OPTIONS = { serverUrl: LOCAL_LANGUAGE_TOOL.serverUrl, language: 'en-US' }
 const ONLINE_LANGUAGE_TOOL_OPTIONS = {
   serverUrl: 'https://api.languagetool.org',
   language: 'en-US',
@@ -44,6 +45,7 @@ const runCorrectionPipeline = createCorrectionPipeline({
   getSettings,
   languageToolOptions: LANGUAGE_TOOL_OPTIONS,
   onlineLanguageToolOptions: ONLINE_LANGUAGE_TOOL_OPTIONS,
+  isLocalLanguageToolAllowed,
 })
 
 const inlineChecks = createInlineCheckRunner(runCorrectionPipeline)
@@ -113,13 +115,15 @@ const MESSAGE_HANDLERS: MessageHandlers = {
 // Changes are queued, because two running at once would both try to register the same script.
 let siteSync = Promise.resolve()
 const queueSiteSync = (settings: Settings) => {
-  siteSync = siteSync.then(() => syncCustomSiteScripts(settings)).catch((error) => console.error('[WriteBetter] Could not update site scripts', error))
+  // A failed sync must not stop the ones queued after it; the next change of sites registers them again.
+  siteSync = siteSync.then(() => syncCustomSiteScripts(settings)).catch(() => {})
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
   const settings = await getSettings()
   queueSiteSync(settings)
-  await injectIntoOpenTabs(settings).catch((error) => console.error('[WriteBetter] Could not start in open tabs', error))
+  // Tabs it could not reach get the script when they are next loaded.
+  await injectIntoOpenTabs(settings).catch(() => {})
 })
 
 onSettingsChanged((settings, previous) => {
@@ -145,7 +149,6 @@ chrome.runtime.onMessage.addListener((message: IncomingMessage, sender: chrome.r
     .then(() => handleMessage(message.payload, sender))
     .then((data) => sendResponse({ ok: true, data }))
     .catch((error: unknown) => {
-      if (!(error instanceof UserFacingError)) console.error(`[WriteBetter] ${message.type} failed`, error)
       sendResponse({
         ok: false,
         error: error instanceof UserFacingError ? error.message : 'Something went wrong in the background service.',

@@ -8,10 +8,12 @@ import { CORRECT_SENTENCES } from '../fixtures/sentences.ts'
 import { createCorrectionPipeline, type CorrectionPipeline, type CorrectionRequest, type CorrectionResult, type EngineReport } from './correctionPipeline.ts'
 
 const spellChecker = createSpellChecker(dictionary)
+// Most tests are about what LanguageTool answers, so the user has set up the server on this computer.
 const runPipeline = createCorrectionPipeline({
   getSpellChecker: () => spellChecker,
   languageToolOptions: { serverUrl: 'http://localhost:8081', language: 'en-US' },
   onlineLanguageToolOptions: { serverUrl: 'https://api.languagetool.org', language: 'en-US', unreachableMessage: 'Could not reach LanguageTool online.' },
+  isLocalLanguageToolAllowed: async () => true,
 })
 const originalFetch = globalThis.fetch
 const EXAMPLE = 'can you check the current ticket info'
@@ -85,6 +87,21 @@ describe('correction pipeline', () => {
       return urls
     }
 
+    it('sends nothing anywhere when it is off and no server on this computer was set up', async () => {
+      const urls = recordRequests()
+      const pipeline = createCorrectionPipeline({
+        getSpellChecker: () => spellChecker,
+        languageToolOptions: { serverUrl: 'http://localhost:8081', language: 'en-US' },
+        onlineLanguageToolOptions: { serverUrl: 'https://api.languagetool.org', language: 'en-US' },
+      })
+      for (const action of [CORRECTION_ACTIONS.fixGrammar, CORRECTION_ACTIONS.fixEverything]) {
+        const result = await pipeline({ text: "He don't know.", action })
+        assert.equal(findReport(result, 'Grammar (LanguageTool)'), undefined, action)
+        assert.equal(result.corrected.startsWith("He doesn't know"), true, action)
+      }
+      assert.deepEqual(urls, [])
+    })
+
     it('stays on the local server unless it is switched on', async () => {
       const urls = recordRequests()
       const result = await runPipeline({ text: 'Hello there.', action: CORRECTION_ACTIONS.fixGrammar })
@@ -119,11 +136,12 @@ describe('correction pipeline', () => {
   })
 
   describe('inline check', () => {
-    const createInlinePipeline = () =>
+    const createInlinePipeline = (isLocalAllowed = true) =>
       createCorrectionPipeline({
         getSpellChecker: () => spellChecker,
         languageToolOptions: { serverUrl: 'http://localhost:8081', language: 'en-US' },
         onlineLanguageToolOptions: { serverUrl: 'https://api.languagetool.org', language: 'en-US' },
+        isLocalLanguageToolAllowed: async () => isLocalAllowed,
       })
     const inlineCheck = (pipeline: CorrectionPipeline, text: string, request?: Partial<Omit<CorrectionRequest, 'text' | 'action'>>) => pipeline({ text, action: CORRECTION_ACTIONS.inlineCheck, ...request })
 
@@ -157,6 +175,14 @@ describe('correction pipeline', () => {
       const { suggestions, toneAlternatives } = await inlineCheck(createInlinePipeline(), 'i recieve it. send me the file')
       const ids = [...suggestions, ...Object.values(toneAlternatives).flat()].map(({ id }) => id)
       assert.equal(new Set(ids).size, ids.length)
+    })
+
+    it('sends nothing anywhere unless the server on this computer was set up, even with the online switch on', async () => {
+      const urls = countRequests()
+      const result = await inlineCheck(createInlinePipeline(false), "He don't know.", { isOnlineGrammarEnabled: true })
+      assert.deepEqual(urls, [])
+      assert.equal(findReport(result, 'Grammar (LanguageTool)'), undefined)
+      assert.equal(findReport(result, 'Grammar (local rules)').status, ENGINE_STATUS.used)
     })
 
     it('never uses the online service, even with the switch on', async () => {
@@ -341,10 +367,7 @@ describe('correction pipeline', () => {
       languageToolOptions: { serverUrl: 'http://localhost:8081', language: 'en-US' },
       onlineLanguageToolOptions: { serverUrl: 'https://api.languagetool.org', language: 'en-US' },
     })
-    const originalConsoleError = console.error
-    console.error = () => {}
     const result = await pipelineWithBrokenSpeller({ text: 'they was late', action: CORRECTION_ACTIONS.fixGrammar })
-    console.error = originalConsoleError
 
     assert.equal(findReport(result, 'Spelling (nspell)').status, ENGINE_STATUS.failed)
     assert.equal(result.corrected, 'They were late')

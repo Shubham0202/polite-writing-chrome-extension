@@ -90,12 +90,11 @@ const ENGINE_LABEL: Record<ApiKeySlot, (providerLabel: string) => string> = {
 const toSwitchedKeyMessage = (from: ApiKeySlot, to: ApiKeySlot, message: string): string =>
   `The ${API_KEY_SLOT_LABEL[from]} reached its limit, so the ${API_KEY_SLOT_LABEL[to]} was tried. ${message}`
 
-// Storage can fail during an update or when the profile is in trouble; the user gets a reason, the console the cause.
+// Storage can fail during an update or when the profile is in trouble; the user gets a plain reason instead.
 const readSettings = async (getAiSettings: WritingEnhancerOptions['getAiSettings']): Promise<AiSettings> => {
   try {
     return await getAiSettings()
-  } catch (error) {
-    console.error('[WriteBetter] Could not read the AI settings', error)
+  } catch {
     throw new UserFacingError(SETTINGS_UNREADABLE_MESSAGE)
   }
 }
@@ -105,19 +104,12 @@ const readSettings = async (getAiSettings: WritingEnhancerOptions['getAiSettings
 const readActiveKeySlot = async (getActiveKeySlot: WritingEnhancerOptions['getActiveKeySlot']): Promise<ApiKeySlot> => {
   try {
     return await getActiveKeySlot()
-  } catch (error) {
-    console.error('[WriteBetter] Could not read which API key to use', error)
+  } catch {
     return API_KEY_SLOTS.primary
   }
 }
 
-const rememberActiveKey = async (slot: ApiKeySlot, setActiveKeySlot: WritingEnhancerOptions['setActiveKeySlot']): Promise<void> => {
-  try {
-    await setActiveKeySlot(slot)
-  } catch (error) {
-    console.error('[WriteBetter] Could not remember which API key to use', error)
-  }
-}
+const rememberActiveKey = (slot: ApiKeySlot, setActiveKeySlot: WritingEnhancerOptions['setActiveKeySlot']): Promise<void> => setActiveKeySlot(slot).catch(() => {})
 
 // The active key is asked first. When it reaches its limit the other key is asked at once, and it becomes the active
 // key only once it answers: later rewrites stay on it until it reaches its own limit. Remembering a key before it has

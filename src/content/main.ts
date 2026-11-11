@@ -1,11 +1,8 @@
-import { ENGINE_STATUS } from '../constants/corrections.ts'
 import { DEFAULT_SETTINGS, type Settings } from '../constants/settings.ts'
-import type { InlineCheckResult } from '../services/correctionPipeline.ts'
 import { MESSAGE_TYPES, sendMessage, type CommandMessageType } from '../services/messaging.ts'
 import { getSettings, isAssistanceActive, onSettingsChanged, updateSettings } from '../services/settings.ts'
 import { getDefaultShortcuts } from '../services/shortcuts.ts'
 import { watchTheme } from '../services/theme.ts'
-import { logDebug as log } from '../utils/debugLog.ts'
 import { lookup } from '../utils/lookup.ts'
 import { createInputFieldObserver } from './inputFieldObserver.ts'
 import { createLazyInlineSuggestions } from './lazyInlineSuggestions.ts'
@@ -22,35 +19,16 @@ type ToggleSettingKey = 'isAiShortcutEnabled' | 'isCloseOnAcceptEnabled'
 
 const CHECK_SETTINGS: (keyof Settings)[] = ['isSpellingEnabled', 'isGrammarEnabled', 'isPoliteEnabled', 'isProfessionalEnabled']
 
-const summarizeResult = ({ suggestions, toneAlternatives, engines }: InlineCheckResult): string =>
-  JSON.stringify({
-    suggestions: suggestions.map(({ engine }) => engine),
-    toneAlternatives: Object.entries(toneAlternatives).map(([tone, alternatives]) => `${tone}: ${alternatives.length}`),
-    engines: engines.filter(({ status }) => status !== ENGINE_STATUS.used).map(({ label, status }) => `${label}: ${status}`),
-  })
-
 let settings = DEFAULT_SETTINGS
 
-const inlineSuggestions = createLazyInlineSuggestions({
-  onUnavailable: (reason) => log(`Suggestions unavailable: ${reason}`),
-})
+const inlineSuggestions = createLazyInlineSuggestions()
 
 const setTheme = watchTheme(inlineSuggestions.setColorScheme)
 
 const checkText = createTextChecker({
-  onResult: (result) => {
-    log(`Check finished: ${summarizeResult(result)}`)
-    inlineSuggestions.showResult(result)
-  },
-  onEmpty: () => {
-    log('Check skipped: no text')
-    inlineSuggestions.clear()
-  },
-  onRejected: (reason) => {
-    log(`Check skipped: ${reason}`)
-    inlineSuggestions.showNotice(reason)
-  },
-  onFailed: (reason) => log(`Check failed: ${reason}`),
+  onResult: (result) => inlineSuggestions.showResult(result),
+  onEmpty: () => inlineSuggestions.clear(),
+  onRejected: (reason) => inlineSuggestions.showNotice(reason),
   onDisconnected: () => inputFieldObserver.stop(),
 })
 
@@ -64,16 +42,13 @@ const inputFieldObserver = createInputFieldObserver({
   isOwnElement: inlineSuggestions.isOwnElement,
   siteAdapter: getSiteAdapter(getPageHostname()),
   onFieldActivated: (field, kind) => {
-    log(`Watching ${kind} field`, field)
     inlineSuggestions.attach(field, kind)
     textChangeDetector.watch(field, kind)
   },
-  onFieldDeactivated: (field, reason) => {
+  onFieldDeactivated: () => {
     textChangeDetector.unwatch()
     inlineSuggestions.detach()
-    log(`Stopped watching field (${reason})`, field)
   },
-  onFieldSkipped: (field, reason) => log(`Skipped field (${reason})`, field),
   onStopped: inlineSuggestions.destroy,
 })
 

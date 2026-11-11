@@ -29,7 +29,15 @@ export interface Settings {
   theme: Theme
   pausedSites: string[]
   customSites: string[]
+  isLocalLanguageToolEnabled: boolean
 }
+
+// A LanguageTool server the user runs on this computer. Its permission is optional and asked for only when the user
+// turns the server on in Settings, since whatever program listens at this address receives the text.
+export const LOCAL_LANGUAGE_TOOL = Object.freeze({
+  serverUrl: 'http://localhost:8081',
+  permissionPattern: 'http://localhost:8081/*',
+})
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   isInlineEnabled: true,
@@ -46,6 +54,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   theme: THEMES.system,
   pausedSites: [],
   customSites: [],
+  isLocalLanguageToolEnabled: false,
 })
 
 export const BUILT_IN_SITES = Object.freeze([

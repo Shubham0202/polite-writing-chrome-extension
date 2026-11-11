@@ -68,6 +68,9 @@ export interface CorrectionPipelineOptions {
   getSettings?: () => Promise<Readonly<Settings>>
   languageToolOptions: LanguageToolOptions
   onlineLanguageToolOptions: LanguageToolOptions
+  // Whether the LanguageTool server on this computer may be asked. Off unless the user set it up, because whatever
+  // program listens at its address receives the text.
+  isLocalLanguageToolAllowed?: () => Promise<boolean>
 }
 
 export type InlineCheckRequest = CorrectionRequest & { action: typeof CORRECTION_ACTIONS.inlineCheck }
@@ -104,7 +107,9 @@ interface CorrectionOutcome {
 
 interface ActionContext {
   tone: Tone
-  languageTool: LanguageToolEngine
+  // Null when no LanguageTool server may be asked: grammar then comes from the built-in rules alone.
+  languageTool: LanguageToolEngine | null
+  canUseLocalLanguageTool: boolean
   signal: AbortSignal | undefined
 }
 
@@ -134,7 +139,6 @@ const runEngine = async (
     const { suggestions, message = null } = Array.isArray(output) ? { suggestions: output } : output
     return { suggestions, report: { label, status: ENGINE_STATUS.used, message } }
   } catch (error) {
-    if (!(error instanceof UserFacingError)) console.error(`[WriteBetter] ${label} failed`, error)
     const reason = error instanceof UserFacingError ? error.message : `${label} could not run.`
     return { suggestions: [], report: { label, status: failureStatus, message: `${reason} ${fallbackMessage}`.trim() } }
   }
@@ -193,6 +197,7 @@ export const createCorrectionPipeline = ({
   getSettings = async () => DEFAULT_SETTINGS,
   languageToolOptions,
   onlineLanguageToolOptions,
+  isLocalLanguageToolAllowed = async () => false,
 }: CorrectionPipelineOptions): CorrectionPipeline => {
   const localLanguageTool: LanguageToolEngine = {
     label: 'Grammar (LanguageTool)',
@@ -203,6 +208,13 @@ export const createCorrectionPipeline = ({
     check: (text: string) => checkWithLanguageTool(text, onlineLanguageToolOptions),
   }
   let inlineLanguageToolRetryAt = 0
+
+  // For the popup buttons: the online service while its switch is on, otherwise the server on this computer if the
+  // user set one up, otherwise none.
+  const chooseLanguageTool = (isOnlineGrammarEnabled: boolean, canUseLocalLanguageTool: boolean): LanguageToolEngine | null => {
+    if (isOnlineGrammarEnabled) return onlineLanguageTool
+    return canUseLocalLanguageTool ? localLanguageTool : null
+  }
 
   const createInlineLanguageTool = (signal: AbortSignal | undefined): LanguageToolEngine => ({
     label: localLanguageTool.label,
@@ -223,11 +235,15 @@ export const createCorrectionPipeline = ({
       return { suggestions, message: isComplete ? null : 'Only the first part was spell-checked because the text has many unknown words.' }
     })
 
-  const runGrammar = (text: string, languageTool: LanguageToolEngine): Promise<EngineRun>[] => [
-    runEngine(languageTool.label, () => languageTool.check(text), {
-      failureStatus: ENGINE_STATUS.unavailable,
-      fallbackMessage: 'Grammar was checked with local rules only.',
-    }),
+  const runGrammar = (text: string, languageTool: LanguageToolEngine | null): Promise<EngineRun>[] => [
+    ...(languageTool
+      ? [
+          runEngine(languageTool.label, () => languageTool.check(text), {
+            failureStatus: ENGINE_STATUS.unavailable,
+            fallbackMessage: 'Grammar was checked with local rules only.',
+          }),
+        ]
+      : []),
     runEngine('Grammar (local rules)', () => checkGrammarRules(text)),
     runEngine('Tense rules', () => checkTense(text)),
   ]
@@ -235,7 +251,7 @@ export const createCorrectionPipeline = ({
   // The switches are for checks that run by themselves; a popup button is an explicit request, so it always runs everything.
   const runCorrections = async (
     text: string,
-    languageTool: LanguageToolEngine,
+    languageTool: LanguageToolEngine | null,
     { isSpellingEnabled, isGrammarEnabled }: Readonly<Settings> = DEFAULT_SETTINGS,
   ): Promise<CorrectionOutcome> => {
     const results = await Promise.all([
@@ -248,7 +264,7 @@ export const createCorrectionPipeline = ({
     }
   }
 
-  const runValidatedCorrections = async (text: string, languageTool: LanguageToolEngine, settings?: Readonly<Settings>): Promise<CorrectionOutcome> => {
+  const runValidatedCorrections = async (text: string, languageTool: LanguageToolEngine | null, settings?: Readonly<Settings>): Promise<CorrectionOutcome> => {
     const { suggestions, reports } = await runCorrections(text, languageTool, settings)
     return { suggestions: removeOverlaps(validateSuggestions(text, suggestions), rankSuggestion), reports }
   }
@@ -258,7 +274,7 @@ export const createCorrectionPipeline = ({
     return { suggestions, reports: [report] }
   }
 
-  const runFixEverything = async (text: string, tone: Tone, languageTool: LanguageToolEngine): Promise<CorrectionOutcome> => {
+  const runFixEverything = async (text: string, tone: Tone, languageTool: LanguageToolEngine | null): Promise<CorrectionOutcome> => {
     const corrections = await runValidatedCorrections(text, languageTool)
     const { suggestions, report } = await runEngine(`${TONE_LABEL[tone]} tone rules`, () =>
       mergeToneIntoCorrections(text, corrections.suggestions, tone),
@@ -281,9 +297,9 @@ export const createCorrectionPipeline = ({
     return { tone, suggestions: suggestions.map((suggestion, index) => ({ ...suggestion, id: `${tone}-${index}` })), report }
   }
 
-  const runInlineCheck = async (text: string, signal: AbortSignal | undefined): Promise<CorrectionOutcome> => {
+  const runInlineCheck = async (text: string, languageTool: LanguageToolEngine | null): Promise<CorrectionOutcome> => {
     const settings = await getSettings()
-    const corrections = await runValidatedCorrections(text, createInlineLanguageTool(signal), settings)
+    const corrections = await runValidatedCorrections(text, languageTool, settings)
     const enabledTones = Object.values(TONES).filter((tone) => settings[TONE_SETTING[tone]])
     const alternatives = await Promise.all(enabledTones.map((tone) => runToneAlternatives(text, corrections.suggestions, tone)))
     const noRewrites = Object.fromEntries(Object.values(TONES).map((tone) => [tone, []]))
@@ -301,7 +317,8 @@ export const createCorrectionPipeline = ({
     [CORRECTION_ACTIONS.professional]: (text: string) => runTone(text, TONES.professional),
     [CORRECTION_ACTIONS.fixEverything]: (text: string, { tone, languageTool }: ActionContext) => runFixEverything(text, tone, languageTool),
     // Inline checks run without the user asking, so they never use the online service, whatever the popup switch says.
-    [CORRECTION_ACTIONS.inlineCheck]: (text: string, { signal }: ActionContext) => runInlineCheck(text, signal),
+    [CORRECTION_ACTIONS.inlineCheck]: (text: string, { canUseLocalLanguageTool, signal }: ActionContext) =>
+      runInlineCheck(text, canUseLocalLanguageTool ? createInlineLanguageTool(signal) : null),
   }
 
   // One implementation serves both overloads: an inline check always comes back with its tone alternatives.
@@ -313,8 +330,9 @@ export const createCorrectionPipeline = ({
     if (!handleAction) throw new UserFacingError('This correction is not available.')
     if (!lookup(TONE_LABEL, tone)) throw new UserFacingError('This tone is not available.')
 
-    const languageTool = isOnlineGrammarEnabled ? onlineLanguageTool : localLanguageTool
-    const { suggestions, reports, toneAlternatives } = await handleAction(text, { tone, languageTool, signal })
+    const canUseLocalLanguageTool = await isLocalLanguageToolAllowed()
+    const languageTool = chooseLanguageTool(isOnlineGrammarEnabled, canUseLocalLanguageTool)
+    const { suggestions, reports, toneAlternatives } = await handleAction(text, { tone, languageTool, canUseLocalLanguageTool, signal })
     const finalSuggestions = dropRedundantPunctuation(removeOverlaps(validateSuggestions(text, suggestions), rankSuggestion)).map(
       (suggestion, index) => ({ ...suggestion, id: `${suggestion.engine}-${index}` }),
     )

@@ -1,4 +1,4 @@
-# WriteBetter – Polite Writing Chrome Extension
+# WriteBetter – Polite Writing Assistant
 
 **A privacy-first grammar checker and writing assistant for Chrome.**
 
@@ -8,7 +8,7 @@
 ![Chrome 116+](https://img.shields.io/badge/Chrome-116%2B-4285F4)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 
-WriteBetter is a Chrome extension (Manifest V3) that fixes spelling, grammar, tense and tone while you write in Gmail, Google Chat, WhatsApp Web, LinkedIn and Jira, and turns casual messages into polite or professional ones. Every check runs on your computer and works offline. AI rewriting is optional and uses your own Gemini, Groq or OpenRouter API key, so it is a local-first alternative to Grammarly-style tools that send what you type to a server.
+WriteBetter is a Chrome extension (Manifest V3) that fixes spelling, grammar, tense and tone while you write in Gmail, Google Chat, WhatsApp Web, LinkedIn and Jira, and turns casual messages into polite or professional ones. Checks as you type run on your computer and work offline. The popup's **Fix Grammar** and **Fix Everything** also ask LanguageTool's online service unless you turn that off, and AI rewriting is optional and uses your own Gemini, Groq or OpenRouter API key, so it is a local-first alternative to Grammarly-style tools that send what you type to a server.
 
 🌐 **Website:** [writebetter-landing-page.vercel.app](https://writebetter-landing-page.vercel.app/)
 
@@ -21,7 +21,7 @@ WriteBetter is a Chrome extension (Manifest V3) that fixes spelling, grammar, te
 - [How it works](#-how-it-works)
 - [Installation](#-installation)
 - [Using WriteBetter](#-using-writebetter)
-- [Configuration](#-configuration): [Settings](#settings), [AI rewriting](#ai-rewriting-optional), [local LanguageTool](#local-languagetool-server-optional), [online grammar check](#online-grammar-check-optional)
+- [Configuration](#-configuration): [Settings](#settings), [AI rewriting](#ai-rewriting-optional), [local LanguageTool](#local-languagetool-server-optional), [online grammar check](#online-grammar-check-on-by-default)
 - [Privacy and security](#-privacy-and-security)
 - [Permissions](#-permissions)
 - [Website compatibility](#-website-compatibility)
@@ -39,10 +39,10 @@ WriteBetter is a Chrome extension (Manifest V3) that fixes spelling, grammar, te
 - **Make Polite, Professional and Fix Everything:** rewrite a casual or blunt message into a polite, professional one, then review every change before you replace your text.
 - **Suggestions as you type:** on Gmail, Google Chat, WhatsApp Web, LinkedIn and Jira, with underlines, a suggestion card, Accept, Dismiss, Ignore and Undo. Works in rich-text editors, modal dialogs and shadow DOM, and you can add other sites in Settings.
 - **Keyboard shortcuts:** Alt+Shift+G opens the suggestion at the cursor, and Ctrl+Shift+Space lists every suggestion in the field.
-- **Optional AI rewriting:** with your own Google Gemini, Groq or OpenRouter key (free OpenRouter models work), in [six styles](#rewrite-styles): improve wording, professional, polite, concise, friendly and clarity.
-- **Optional LanguageTool:** grammar checks from a server on your computer or, if you turn it on, LanguageTool's public API.
+- **Optional AI rewriting:** with your own Google Gemini, Groq or OpenRouter key (free OpenRouter models work), in [six styles](#rewrite-styles): improve wording, professional, polite, concise, friendly and clarity. An optional [backup key](#backup-api-key) takes over when the first one reaches its limit.
+- **LanguageTool:** grammar checks from LanguageTool's public API for the popup's Fix Grammar and Fix Everything (on by default, one switch to turn off), and optionally from a server on your computer once you turn it on in Settings.
 - **Light and dark themes:** for the popup, Settings and the suggestions on websites, or match your system.
-- **Private by default:** your text is never stored, and nothing leaves your computer unless you turn on the online grammar check or AI rewriting.
+- **Private by design:** your text is never saved, and checks as you type stay on your computer. Text only goes online when you press **Fix Grammar** or **Fix Everything** in the popup (LanguageTool, on by default, one switch to turn off) or use AI rewriting with your own key.
 
 ## 🚀 Why WriteBetter?
 
@@ -54,7 +54,7 @@ Writing a clear, polite message takes time, especially to colleagues, clients or
 
 Unlike tools that send everything you type to a server, WriteBetter:
 
-- Runs its checks on your computer, with no account, and keeps working offline.
+- Runs its checks as you type on your computer, with no account, and keeps working offline.
 - Never changes your text without a click, and shows every change before you accept it.
 - Sends text to an AI provider only when you ask, using your own key.
 
@@ -98,8 +98,8 @@ The top part always runs on your computer. Text only reaches the services in the
 | Local grammar and punctuation rules | Yes | Agreement, capitalization, question marks, spacing, repeated words, a/an |
 | Tense rules | Yes | Only verbs in `src/engines/tense/verbLexicon.ts` are corrected |
 | Polite and professional tone | Yes | Rule-based phrase and sentence transformations |
-| LanguageTool grammar | Yes, once installed locally | Needs the Java server described under [Configuration](#local-languagetool-server-optional); nothing is sent to the internet |
-| LanguageTool grammar, online | No | Only when you turn on **Online grammar check** in the popup |
+| LanguageTool grammar | Yes, once installed locally | Needs the Java server described under [Configuration](#local-languagetool-server-optional) and its switch in Settings; nothing is sent to the internet |
+| LanguageTool grammar, online | No | On by default for **Fix Grammar** and **Fix Everything** in the popup; turn off **Online grammar check** there to keep them on this computer |
 | AI rewriting | No | Only when you press **Rewrite with AI** in the popup, or Ctrl+Shift+Space with its AI switch on, after adding your own API key in Settings |
 
 ## 📦 Installation
@@ -143,7 +143,7 @@ Chrome treats an unpacked extension loaded from a different folder as a differen
 3. Review the original, the corrected text and every change. Untick any change you do not want.
 4. **Copy** the result, or **Replace input**, which **Undo** reverses. **Reset** clears the result.
 
-The popup also has the **Online grammar check** switch, **Rewrite with AI**, and switches that pause suggestions on websites everywhere or only on the site you are on.
+The popup also has the **Online grammar check** switch (on by default; see [Online grammar check](#online-grammar-check-on-by-default)), **Rewrite with AI**, and switches that pause suggestions on websites everywhere or only on the site you are on.
 
 ### On websites
 
@@ -177,7 +177,7 @@ Open Settings in any of these ways:
 - Right-click the WriteBetter icon and choose **Options**.
 - Go to `chrome://extensions`, open WriteBetter's **Details** and choose **Extension options**.
 
-Changes save as soon as you make them. Only the AI provider, key and model need **Save**.
+Changes save as soon as you make them. Only the AI provider, keys and model need **Save**.
 
 | Setting | What it does |
 |---------|--------------|
@@ -188,8 +188,10 @@ Changes save as soon as you make them. Only the AI provider, key and model need 
 | Keyboard shortcuts | The key Chrome has for each shortcut in this profile, a warning when one is not set, and **Change shortcuts**, which opens `chrome://extensions/shortcuts` |
 | Websites | Turn a site off to pause it there, or add one. Chrome asks for access to that site only, and removing the site gives that access back |
 | Ignored words | The personal dictionary. Words can be removed here |
-| AI rewriting | The provider, API key, optional backup API key and model that **Rewrite with AI** uses, and whether Ctrl+Shift+Space rewrites with AI on websites and in which style. Optional; the keys stay on this computer and **Remove key** deletes them |
+| LanguageTool on this computer | **Use a LanguageTool server on this computer**, off by default. Turn it on only if you run a LanguageTool server yourself; Chrome then asks for access to `http://localhost:8081`. See [Local LanguageTool server](#local-languagetool-server-optional) |
+| AI rewriting | The provider, API key, optional backup API key and model that **Rewrite with AI** uses, and whether Ctrl+Shift+Space rewrites with AI on websites and in which style. Optional; the keys stay on this computer and **Remove key** (**Remove keys** once a backup key is saved) deletes them |
 | Appearance | Light, dark, or matching your system, for the popup, Settings and the suggestions on websites |
+| Privacy | A summary of what is checked on this computer, what is sent where, and what is saved |
 
 The popup can also pause the site you are on. Chat inside Gmail follows the Gmail switch; the Google Chat switch is for `chat.google.com` itself. Settings are saved in Chrome's local extension storage, on this computer.
 
@@ -262,20 +264,21 @@ A second key for the same provider, used only when a key reaches its rate limit 
 
 ### Local LanguageTool server (optional)
 
-Without it, grammar is checked by the built-in local rules and the result says that LanguageTool was unavailable. With it, LanguageTool adds broader grammar and punctuation checks, and your text still never leaves your computer.
+Without it, grammar is checked by the built-in local rules. With it, LanguageTool adds broader grammar and punctuation checks to the checks as you type, and your text still never leaves your computer.
 
 1. Download and unzip LanguageTool from https://languagetool.org/download/LanguageTool-stable.zip
 2. In the unzipped folder, run:
    ```bash
    java -cp languagetool-server.jar org.languagetool.server.HTTPServer --port 8081
    ```
-3. Run a correction again. The result's engine list shows **Grammar (LanguageTool) ran**.
+3. In **Settings → LanguageTool on this computer**, turn on **Use a LanguageTool server on this computer**. Chrome asks for access to `http://localhost:8081`; turning the switch off gives that access back.
+4. Check some text again. The result's engine list shows **Grammar (LanguageTool) ran**.
 
-The extension calls `http://localhost:8081/v2/check`; this address cannot be changed yet.
+The extension calls `http://localhost:8081/v2/check` only while that switch is on, because whatever program listens at that address receives the text; the address cannot be changed yet. The popup's **Fix Grammar** and **Fix Everything** use the online service instead while **Online grammar check** is on, which it is by default; turn it off in the popup to use your server for them too.
 
-### Online grammar check (optional)
+### Online grammar check (on by default)
 
-To use LanguageTool without installing anything, turn on **Online grammar check** in the popup. It is off by default.
+**Online grammar check** in the popup lets the popup's buttons use LanguageTool without installing anything. It is on by default; turn it off in the popup to keep popup checks on this computer.
 
 - When it is on, **Fix Grammar** and **Fix Everything** send your text to [LanguageTool](https://languagetool.org)'s free public API (`https://api.languagetool.org/v2/check`) instead of the local server. Your text and IP address go to LanguageTool's servers; see their [privacy policy](https://languagetool.org/legal/privacy).
 - **Make Polite** and **Professional** never use it.
@@ -286,23 +289,23 @@ To use LanguageTool without installing anything, turn on **Online grammar check*
 
 WriteBetter has no server of its own, no account and no analytics or tracking. The built-in checks run inside the extension on your computer.
 
-Your text leaves your computer only in these cases, all off by default:
+Your text leaves your computer only in these cases. The first is on by default and happens only when you press one of those two buttons; the others are off until you set them up:
 
 | When | Where it goes | What is sent |
 |------|---------------|--------------|
-| **Online grammar check** is on in the popup and you press **Fix Grammar** or **Fix Everything** | LanguageTool's public API | The text in the popup |
+| **Online grammar check** is on in the popup (the default) and you press **Fix Grammar** or **Fix Everything** | LanguageTool's public API | The text in the popup |
 | You press **Rewrite with AI** in the popup | The AI provider you chose | The text in the popup and the chosen style |
 | **Rewrite with AI from the keyboard shortcut** is on and you press Ctrl+Shift+Space in a field | The AI provider you chose | That field's text and the chosen style |
 
-A LanguageTool server you run yourself listens on `localhost`, so using it sends nothing to the internet.
+A LanguageTool server you run yourself listens on `localhost`, so using it sends nothing to the internet. WriteBetter only contacts it after you turn it on in Settings.
 
-- **Never stored:** your text.
-- **Saved in Chrome's local extension storage, on this computer:** your settings, your ignored words and, if you add them, your AI API key and backup API key. The keys are only ever sent to the provider you chose, and **Remove key** deletes them.
+- **Never saved:** your text. If you open Settings from the popup, the popup's text waits in Chrome's in-memory session storage until the popup opens again, then it is deleted; closing Chrome deletes it too.
+- **Saved in Chrome's local extension storage, on this computer:** your settings, the Online grammar check switch, your ignored words and, if you add them, your AI API key and backup API key, and which of the two keys is in use. The keys are not encrypted and not synced to your Google account; they are only ever sent to the provider you chose, in a request header over HTTPS, and **Remove key** deletes them. Removing the extension deletes all of it.
 - **Never watched:** password, payment, one-time-code, read-only and code-editor fields.
 - **Kept away from the page:** the suggestion UI lives in a closed Shadow DOM, so sites cannot restyle it or read the text in it.
 - **Not trusted from the page:** messages to the background service are only accepted from the part of the extension that really sends them, and key presses a page fakes never trigger a shortcut.
 
-When you use an online service, its own terms and privacy policy apply: see [LanguageTool's](https://languagetool.org/legal/privacy) and your AI provider's before sending work messages.
+When you use an online service, its own terms and privacy policy apply: see [LanguageTool's](https://languagetool.org/legal/privacy) and your AI provider's before sending work messages. Like any web request, these services also see your IP address.
 
 ## 🔑 Permissions
 
@@ -310,7 +313,7 @@ When you use an online service, its own terms and privacy policy apply: see [Lan
 |------------|-----|
 | `storage` | Remembers your settings, the Online grammar check switch, the words you chose to ignore and, if you add them, your AI API keys |
 | `scripting` | Injects the suggestion UI into a page the first time there is something to show, and registers sites you add |
-| `http://localhost/*`, `http://127.0.0.1/*` | Lets the service worker reach a LanguageTool server running on this computer |
+| Optional: `http://localhost:8081/*` | Declared as optional, so nothing is granted at install. Turning on **Use a LanguageTool server on this computer** in Settings asks Chrome for it, so the service worker can reach that server; turning it off gives it back |
 | Optional: access to any website (`*://*/*`) | Declared as optional, so nothing is granted at install. Adding a site in Settings asks Chrome for that one site |
 | `mail.google.com`, `chat.google.com`, `web.whatsapp.com`, `www.linkedin.com`, `*.atlassian.net` | Runs the content script there and injects the suggestion UI. Password, payment, one-time-code, read-only and code-editor fields are never watched |
 
@@ -335,12 +338,12 @@ Most sites need nothing special, so `src/content/siteAdapters.ts` only holds wha
 4. `src/services/resultValidator.ts` drops suggestions that no longer match the text, touch URLs, emails, @mentions or `inline code`, would duplicate words or phrases, or would double punctuation ("??").
 5. The popup shows the original, the corrected text and every change. High-confidence changes start ticked; uncertain ones (for example LanguageTool style hints) start unticked. Nothing changes the input until the user clicks **Replace input**, which can be undone.
 
-If an engine is unavailable or fails, the others still run and the result says which engine did not.
+If an engine is unavailable or fails, the others still run and the result says which engine did not. LanguageTool only appears in that list when the online check or the server on this computer is in use.
 
 ### How a check on a website runs
 
 1. The content script finds the supported field that has focus and waits until you stop typing for 1 second.
-2. It sends the text to the service worker, which runs the same engines as the popup. Only the local LanguageTool server is used, never the online service. If that server fails, it is left alone for a minute.
+2. It sends the text to the service worker, which runs the same engines as the popup. The local LanguageTool server is used only if it is turned on in Settings; the online service never is. If that server fails, it is left alone for a minute.
 3. A check is cancelled as soon as the text changes or you leave the field, so results for outdated text are never used.
 
 The small content script runs on supported sites, and the suggestion UI (`inlineUi.js`) is only injected once there is something to show. Both are bundled as single files with size budgets that the build enforces.
@@ -377,7 +380,7 @@ src/
   content/                      Content script for inline assistance: field detection and reading, change detection, checking, and the suggestion UI
     ui/                         Vanilla DOM for the underlines, card and badge (no React in web pages)
   components/                   Shared button, select and switch
-  constants/                    Actions, tones, engines, categories, limits, labels, default settings, built-in sites, AI providers and rewriting styles
+  constants/                    Actions, tones, engines, categories, limits, labels, default settings, built-in sites, the local LanguageTool address, AI providers, API key slots and rewriting styles
   engines/
     suggestion.ts               Suggestion model shared by all engines and the popup
     spelling/                   nspell checker, bundled dictionary, common misspellings
@@ -389,7 +392,7 @@ src/
   hooks/                        Hooks shared by the popup and the settings page
   options/                      Settings page: components and hooks
   popup/                        Popup UI: components and hooks
-  services/                     Correction pipeline, writing enhancer (AI rewriting), latest-request runner, settings, AI settings, ignored words, keyboard shortcuts, result validator, messaging
+  services/                     Correction pipeline, writing enhancer (AI rewriting, switching to the backup key), latest-request runner, settings, AI settings and keys, online grammar and local LanguageTool switches, ignored words, keyboard shortcuts, result validator, messaging
   styles/                       Tailwind import and the brand colour tokens shared with the inline UI
   utils/                        Text, diff, validation and error helpers
 ```
@@ -425,12 +428,14 @@ For a site where suggestions do not appear or Accept does not work, include the 
 - [x] Extension setup, popup ↔ service worker messaging
 - [x] Popup: Fix Grammar, Make Polite, Professional, Fix Everything, result review, Copy / Replace input / Undo / Reset
 - [x] Engines: spelling (nspell), grammar (LanguageTool + local rules), tense rules, polite and professional tone, result validation
-- [x] Settings page (suggestion checks, delay, websites, ignored words, keyboard shortcuts, appearance, privacy summary)
-- [x] Optional online grammar check in the popup (off by default)
+- [x] Settings page (suggestion checks, delay, websites, ignored words, local LanguageTool server, keyboard shortcuts, appearance, privacy summary)
+- [x] Online grammar check in the popup (on by default, for Fix Grammar and Fix Everything only)
 - [x] Inline assistance on websites, phases 1–7 of 8: detects the editable field you are typing in on supported sites, checks its text with the local engines once you pause typing, shows underlines, a suggestion card and a badge on the page, lets you accept, dismiss, ignore and undo, handles rich-text editors, modal dialogs and shadow DOM, and has settings and pause controls
 - [x] Rewrite with AI in the popup: Gemini, Groq or OpenRouter with your own API key, six styles, preview, accept or reject, Replace input, Undo
 - [x] Rewrite with AI from Ctrl+Shift+Space on websites: optional switch in the suggestion list and in Settings, loader, result listed with the other suggestions
 - [x] Light and dark themes
+- [x] Backup API key: switches to the other key when one reaches its rate limit, quota or credit, and says in the result when the backup key answered
+- [x] Local LanguageTool server as an opt-in setting with its own optional permission, instead of being contacted by default
 - [ ] Choosing the LanguageTool server address
 - [ ] Inline assistance, phase 8: final testing and optimization
 - [ ] Testing on the real Gmail, Google Chat, WhatsApp Web, LinkedIn and Jira sites, in a signed-in browser

@@ -19,21 +19,23 @@ describe('online grammar switch', () => {
     delete (globalThis as { chrome?: typeof chrome }).chrome
   })
 
-  it('starts off', async () => {
-    assert.equal(await getOnlineGrammarEnabled(), false)
+  it('starts on', async () => {
+    assert.equal(await getOnlineGrammarEnabled(), true)
   })
 
-  it('remembers the switch', async () => {
+  it('remembers the switch, and stays off once turned off', async () => {
+    await setOnlineGrammarEnabled(false)
+    assert.equal(await getOnlineGrammarEnabled(), false)
     await setOnlineGrammarEnabled(true)
     assert.equal(await getOnlineGrammarEnabled(), true)
   })
 
   it('goes online only when both the request and the stored switch say so', async () => {
-    assert.equal(await isOnlineGrammarAllowed(true), false)
-    await setOnlineGrammarEnabled(true)
     assert.equal(await isOnlineGrammarAllowed(true), true)
     assert.equal(await isOnlineGrammarAllowed(false), false)
     assert.equal(await isOnlineGrammarAllowed('yes'), false)
+    await setOnlineGrammarEnabled(false)
+    assert.equal(await isOnlineGrammarAllowed(true), false)
   })
 
   it('stays on this device when the stored switch cannot be read', async () => {
