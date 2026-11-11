@@ -1,9 +1,11 @@
 /** @author Shubham Chandgude <shubham826852@gmail.com> */
 
+import { devLog, type LogDetails } from '../utils/devLog.ts'
 import { findEdit } from '../utils/textRebase.ts'
 import { FIELD_KINDS, type FieldElementByKind, type FieldKind } from './fieldEligibility.ts'
 import {
   findEditableCaret,
+  findEditableOffset,
   findEditablePositions,
   getFieldSelection,
   mapEditableText,
@@ -23,6 +25,21 @@ export interface FieldEdit<Kind extends FieldKind = FieldKind> extends EditRange
   kind: Kind
   caret: number | null
 }
+
+type SelectionOffsets = [start: number | null, end: number | null]
+
+interface FailedEdit {
+  field: HTMLElement
+  kind: FieldKind
+  start: number
+  end: number
+  selection: SelectionOffsets
+  isCommandRun: boolean
+  text: string
+  expected: string
+}
+
+type ActiveElementRoot = Node & Pick<DocumentOrShadowRoot, 'activeElement'>
 
 
 type ValueField = HTMLInputElement | HTMLTextAreaElement
@@ -82,6 +99,35 @@ const MOVE_CARET: { [Kind in FieldKind]: (field: FieldElementByKind[Kind], offse
 const INVISIBLE_CHARACTERS = /[\u200B\u2060\uFEFF]/g
 const toComparableText = (text: string): string => text.replaceAll('\u00A0', ' ').replace(INVISIBLE_CHARACTERS, '')
 export const isSameText = (first: string, second: string): boolean => toComparableText(first) === toComparableText(second)
+
+const getEditableSelectionOffsets = (field: HTMLElement): SelectionOffsets => {
+  const textMap = mapEditableText(field)
+  const { anchorNode, anchorOffset, focusNode, focusOffset } = getFieldSelection(field)
+  return [findEditableOffset(textMap, anchorNode, anchorOffset), findEditableOffset(textMap, focusNode, focusOffset)]
+}
+
+const SELECTION_OFFSETS: { [Kind in FieldKind]: (field: FieldElementByKind[Kind]) => SelectionOffsets } = {
+  [FIELD_KINDS.input]: (field) => [field.selectionStart, field.selectionEnd],
+  [FIELD_KINDS.textarea]: (field) => [field.selectionStart, field.selectionEnd],
+  [FIELD_KINDS.contentEditable]: getEditableSelectionOffsets,
+}
+
+// Says which step of an edit a site broke, in positions and lengths only, never the text itself.
+const describeFailedEdit = ({ field, kind, start, end, selection, isCommandRun, text, expected }: FailedEdit): LogDetails => {
+  const actual = readFieldText(field, kind)
+  let firstDifference = 0
+  while (firstDifference < expected.length && actual[firstDifference] === expected[firstDifference]) firstDifference += 1
+  const isUnchanged = isSameText(actual, text)
+  return {
+    range: `${start}–${end}`,
+    selection: selection.join('–'),
+    focus: (field.getRootNode() as ActiveElementRoot).activeElement === field ? 'in the field' : 'elsewhere',
+    editCommand: isCommandRun ? 'ran' : 'was refused',
+    outcome: isUnchanged ? 'the text did not change' : `differs from the expected text at ${firstDifference}`,
+    length: actual.length,
+    expectedLength: expected.length,
+  }
+}
 
 // Right after the command, the field shows the browser's raw edit; an editor that rejects or moves it only does so
 // once it has processed that change, so the first read waits too.
@@ -143,13 +189,17 @@ const replaceSpan = async <Kind extends FieldKind>({ field, kind, caret, start, 
   const { scrollTop } = field
   // The edit command acts on whatever has focus, which must be this field and no other.
   field.focus()
-  if (!SELECT_RANGE[kind](field, start, end)) return false
+  if (!SELECT_RANGE[kind](field, start, end)) {
+    devLog('Edit failed: that text could not be selected', () => ({ range: `${start}–${end}` }))
+    return false
+  }
   if (kind === FIELD_KINDS.contentEditable) await waitForSelectionChange()
 
-  if (replacement) document.execCommand('insertText', false, replacement)
-  else document.execCommand('delete')
+  const selection = SELECTION_OFFSETS[kind](field)
+  const isCommandRun = replacement ? document.execCommand('insertText', false, replacement) : document.execCommand('delete')
 
   const isReplaced = await waitForText(field, kind, expected)
+  if (!isReplaced) devLog('Edit failed', () => describeFailedEdit({ field, kind, start, end, selection, isCommandRun, text, expected }))
   // A maxlength can cut a replacement short, which is worse than no change at all.
   if (!isReplaced && readFieldText(field, kind) !== text) document.execCommand('undo')
 
@@ -180,8 +230,10 @@ export const replaceFieldText = async (edit: FieldEdit): Promise<boolean> => {
   if (edit.kind !== FIELD_KINDS.contentEditable) return replaceSpan(edit)
   const { text, atoms } = mapEditableText(edit.field)
   const parts = splitAroundAtoms(text, atoms, edit.start, edit.end, edit.replacement)?.map((part) => narrowToChange(text, part))
-  // Refused when the edit would drop or cut through a mention or emoji.
-  if (!parts) return false
+  if (!parts) {
+    devLog('Edit failed: it would drop or cut through a mention or emoji', () => ({ range: `${edit.start}–${edit.end}` }))
+    return false
+  }
   if (parts.length > 1) return replaceInParts(edit, parts)
   return parts.length ? replaceSpan({ ...edit, ...parts[0] }) : true
 }

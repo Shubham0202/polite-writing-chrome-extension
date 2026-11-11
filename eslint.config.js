@@ -23,4 +23,10 @@ export default defineConfig([
     files: ['**/*.{ts,tsx}'],
     extends: [tseslint.configs.recommended],
   },
+  // Logging goes through src/utils/devLog.ts, which only prints in development builds.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/utils/devLog.ts'],
+    rules: { 'no-console': 'error' },
+  },
 ])

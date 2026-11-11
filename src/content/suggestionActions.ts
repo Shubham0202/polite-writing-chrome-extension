@@ -1,5 +1,6 @@
 import type { IdentifiedSuggestion } from '../engines/suggestion.ts'
 import { MESSAGE_TYPES, sendMessage } from '../services/messaging.ts'
+import { devLog } from '../utils/devLog.ts'
 import { getVisibleBox } from './fieldLocator.ts'
 import { readFieldText } from './fieldText.ts'
 import { isSameText, replaceFieldText } from './textReplacer.ts'
@@ -68,6 +69,7 @@ export const createSuggestionActions = ({ getSession, toast, onDismiss, onAnnoun
     // Sites can change a field without any event, so the text is compared again at the last moment.
     const text = readFieldText(field, kind)
     const isCurrent = text === state!.text
+    if (!isCurrent) devLog('Accept failed: the text changed since it was checked', () => ({ length: text.length, checkedLength: state!.text.length }))
     const isReplaced =
       isCurrent && (await replaceFieldText({ field, kind, caret: locator!.getCaretOffset(), start: offset, end: offset + length, replacement }))
     if (getSession() !== session) return

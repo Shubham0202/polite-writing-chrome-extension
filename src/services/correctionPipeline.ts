@@ -20,6 +20,7 @@ import { applyDefaultSuggestions, isAcceptedByDefault, type IdentifiedSuggestion
 import { checkTense } from '../engines/tense/tenseEngine.ts'
 import { checkTone, containsApology, createToneSuggestion, rewriteSentences } from '../engines/tone/toneEngine.ts'
 import { applyEdits, removeOverlaps } from '../utils/diffUtils.ts'
+import { devError } from '../utils/devLog.ts'
 import { UserFacingError } from '../utils/errors.ts'
 import { lookup } from '../utils/lookup.ts'
 import { getTextValidationError } from '../utils/textValidation.ts'
@@ -139,6 +140,7 @@ const runEngine = async (
     const { suggestions, message = null } = Array.isArray(output) ? { suggestions: output } : output
     return { suggestions, report: { label, status: ENGINE_STATUS.used, message } }
   } catch (error) {
+    if (!(error instanceof UserFacingError)) devError(`${label} failed`, error)
     const reason = error instanceof UserFacingError ? error.message : `${label} could not run.`
     return { suggestions: [], report: { label, status: failureStatus, message: `${reason} ${fallbackMessage}`.trim() } }
   }

@@ -408,7 +408,7 @@ Contributions are welcome: bug fixes, site compatibility fixes, new rules and do
 5. Open a pull request that says what changed and how you tested it, including the sites you tried.
 
 ```bash
-npm run dev        # rebuilds dist/ on every file change
+npm run dev        # rebuilds dist/ on every file change, as a development build that prints debug logs; never publish it
 npm test           # unit tests for every engine and the pipeline (Node's built-in test runner, with tsx for TypeScript)
 npm run lint
 npm run typecheck  # TypeScript, strict
@@ -416,6 +416,8 @@ npm run build      # production build; fails if content.js or inlineUi.js grow p
 ```
 
 While `npm run dev` is running, click the reload icon on the extension card after each rebuild. Tabs already open on a supported site pick up the new version without being refreshed.
+
+Development builds print what each check found and why an edit failed, at DevTools' Verbose level on the page and in the service worker's console. They log positions, lengths and reasons, never your text, a key or a request. Log through `devLog` and `devError` in `src/utils/devLog.ts`: lint rejects any other `console` call. `npm run build` leaves all logging out, and fails if the scripts that run on websites still call `console`.
 
 ## 🐛 Issues and feedback
 

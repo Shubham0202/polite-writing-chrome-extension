@@ -25,6 +25,7 @@ import { isOnlineGrammarAllowed } from '../services/onlineGrammar.ts'
 import { getSettings, onSettingsChanged } from '../services/settings.ts'
 import { isShortcutUnset } from '../services/shortcuts.ts'
 import { createWritingEnhancer, type RewriteRequest } from '../services/writingEnhancer.ts'
+import { devError } from '../utils/devLog.ts'
 import { UserFacingError } from '../utils/errors.ts'
 import { lookup } from '../utils/lookup.ts'
 
@@ -149,6 +150,7 @@ chrome.runtime.onMessage.addListener((message: IncomingMessage, sender: chrome.r
     .then(() => handleMessage(message.payload, sender))
     .then((data) => sendResponse({ ok: true, data }))
     .catch((error: unknown) => {
+      if (!(error instanceof UserFacingError)) devError(`${message.type} failed`, error)
       sendResponse({
         ok: false,
         error: error instanceof UserFacingError ? error.message : 'Something went wrong in the background service.',
