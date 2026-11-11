@@ -74,14 +74,27 @@ export const REWRITE_STYLE_LABEL: Record<RewriteStyle, string> = {
   [REWRITE_STYLES.clarity]: 'Improve clarity',
 }
 
+// The key a rewrite tries first is the active one. It changes only when that key reaches its limit, so a key at its
+// limit is not asked again on every rewrite.
+export const API_KEY_SLOTS = Object.freeze({
+  primary: 'primary',
+  backup: 'backup',
+})
+
+export type ApiKeySlot = (typeof API_KEY_SLOTS)[keyof typeof API_KEY_SLOTS]
+
 export interface AiSettings {
   provider: AiProvider
   apiKey: string
+  // A second key for the same provider, used only when the other key reaches its rate limit or quota, or runs out of
+  // credit.
+  backupApiKey: string
   model: string
 }
 
 export const DEFAULT_AI_SETTINGS: Readonly<AiSettings> = Object.freeze({
   provider: AI_PROVIDERS.gemini,
   apiKey: '',
+  backupApiKey: '',
   model: '',
 })

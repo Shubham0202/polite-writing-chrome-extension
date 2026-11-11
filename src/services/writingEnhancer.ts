@@ -1,6 +1,6 @@
-import { AI_PROVIDER_LABEL, type AiSettings, type RewriteStyle } from '../constants/ai.ts'
+import { AI_PROVIDER_LABEL, API_KEY_SLOTS, type AiSettings, type ApiKeySlot, type RewriteStyle } from '../constants/ai.ts'
 import { ENGINE_STATUS, REWRITE_ACTION, type EngineStatus } from '../constants/corrections.ts'
-import { requestAiRewrite, type AiRewriteRequest } from '../engines/rewrite/aiProviders.ts'
+import { AiLimitError, requestAiRewrite, type AiRewriteRequest } from '../engines/rewrite/aiProviders.ts'
 import { buildRewritePrompt, isLeakedExample, parseRewriteResponse } from '../engines/rewrite/rewritePrompt.ts'
 import {
   alignRewriteBySentence,
@@ -14,12 +14,28 @@ import {
 import { applyDefaultSuggestions, type IdentifiedSuggestion, type Suggestion } from '../engines/suggestion.ts'
 import { UserFacingError } from '../utils/errors.ts'
 import { getTextValidationError } from '../utils/textValidation.ts'
-import { isAiConfigured, resolveModel } from './aiSettings.ts'
+import { isAiConfigured, orderApiKeys, resolveModel } from './aiSettings.ts'
 import { validateSuggestions } from './resultValidator.ts'
 
 export interface WritingEnhancerOptions {
   getAiSettings: () => Promise<AiSettings>
+  // Which key to try first, remembered once one reaches its limit.
+  getActiveKeySlot: () => Promise<ApiKeySlot>
+  setActiveKeySlot: (slot: ApiKeySlot) => Promise<void>
   requestRewrite?: (request: AiRewriteRequest) => Promise<unknown>
+}
+
+interface KeyFailoverRequest {
+  settings: AiSettings
+  activeKeySlot: ApiKeySlot
+  request: Omit<AiRewriteRequest, 'apiKey'>
+  requestRewrite: NonNullable<WritingEnhancerOptions['requestRewrite']>
+  setActiveKeySlot: WritingEnhancerOptions['setActiveKeySlot']
+}
+
+interface KeyedReply {
+  reply: unknown
+  slot: ApiKeySlot
 }
 
 export interface RewriteRequest {
@@ -61,6 +77,18 @@ const toNumbersNotice = (numbers: string[]): string => `The rewrite changed or d
 const UNSAFE_REWRITE_MESSAGE = "The rewrite did not pass WriteBetter's safety checks (it grew too much or repeated itself), so it was not used. Try again."
 const UNRELATED_MESSAGE = 'The AI answered with an unrelated text, so it was not used. Try again.'
 const SETTINGS_UNREADABLE_MESSAGE = 'Could not read the AI settings. Reload the extension and try again.'
+const API_KEY_SLOT_LABEL: Record<ApiKeySlot, string> = {
+  [API_KEY_SLOTS.primary]: 'API key',
+  [API_KEY_SLOTS.backup]: 'backup API key',
+}
+// The popup lists this label under the result, so a rewrite answered by the backup key says so.
+const ENGINE_LABEL: Record<ApiKeySlot, (providerLabel: string) => string> = {
+  [API_KEY_SLOTS.primary]: (providerLabel) => `AI rewrite (${providerLabel})`,
+  [API_KEY_SLOTS.backup]: (providerLabel) => `AI rewrite (${providerLabel}, backup key)`,
+}
+// Says which key the error is about, since Settings has two and the provider's message names neither.
+const toSwitchedKeyMessage = (from: ApiKeySlot, to: ApiKeySlot, message: string): string =>
+  `The ${API_KEY_SLOT_LABEL[from]} reached its limit, so the ${API_KEY_SLOT_LABEL[to]} was tried. ${message}`
 
 // Storage can fail during an update or when the profile is in trouble; the user gets a reason, the console the cause.
 const readSettings = async (getAiSettings: WritingEnhancerOptions['getAiSettings']): Promise<AiSettings> => {
@@ -69,6 +97,49 @@ const readSettings = async (getAiSettings: WritingEnhancerOptions['getAiSettings
   } catch (error) {
     console.error('[WriteBetter] Could not read the AI settings', error)
     throw new UserFacingError(SETTINGS_UNREADABLE_MESSAGE)
+  }
+}
+
+// Which key goes first is only a preference: when it cannot be read or written, a rewrite starts with the first key or
+// the other key, and still runs.
+const readActiveKeySlot = async (getActiveKeySlot: WritingEnhancerOptions['getActiveKeySlot']): Promise<ApiKeySlot> => {
+  try {
+    return await getActiveKeySlot()
+  } catch (error) {
+    console.error('[WriteBetter] Could not read which API key to use', error)
+    return API_KEY_SLOTS.primary
+  }
+}
+
+const rememberActiveKey = async (slot: ApiKeySlot, setActiveKeySlot: WritingEnhancerOptions['setActiveKeySlot']): Promise<void> => {
+  try {
+    await setActiveKeySlot(slot)
+  } catch (error) {
+    console.error('[WriteBetter] Could not remember which API key to use', error)
+  }
+}
+
+// The active key is asked first. When it reaches its limit the other key is asked at once, and it becomes the active
+// key only once it answers: later rewrites stay on it until it reaches its own limit. Remembering a key before it has
+// answered, or keeping a backup key that fails in any other way, would leave rewrites stuck on a broken backup key
+// long after the first key's limit is over.
+const requestWithKeyFailover = async ({ settings, activeKeySlot, request, requestRewrite, setActiveKeySlot }: KeyFailoverRequest): Promise<KeyedReply> => {
+  const [active, other] = orderApiKeys(settings, activeKeySlot)
+  try {
+    return { reply: await requestRewrite({ ...request, apiKey: active.apiKey }), slot: active.slot }
+  } catch (error) {
+    if (!(error instanceof AiLimitError) || !other) {
+      if (active.slot === API_KEY_SLOTS.backup) await rememberActiveKey(API_KEY_SLOTS.primary, setActiveKeySlot)
+      throw error
+    }
+  }
+
+  try {
+    const reply = await requestRewrite({ ...request, apiKey: other.apiKey })
+    await rememberActiveKey(other.slot, setActiveKeySlot)
+    return { reply, slot: other.slot }
+  } catch (error) {
+    throw error instanceof UserFacingError ? new UserFacingError(toSwitchedKeyMessage(active.slot, other.slot, error.message)) : error
   }
 }
 
@@ -98,7 +169,7 @@ const chooseSuggestions = (text: string, perSentence: Suggestion[] | null, whole
 
 // The writing enhancer: one explicit, user-triggered AI rewrite of the whole text. It is separate from the correction
 // pipeline on purpose, so the local engines keep their "fix the error, keep the wording" behaviour.
-export const createWritingEnhancer = ({ getAiSettings, requestRewrite = requestAiRewrite }: WritingEnhancerOptions): WritingEnhancer =>
+export const createWritingEnhancer = ({ getAiSettings, getActiveKeySlot, setActiveKeySlot, requestRewrite = requestAiRewrite }: WritingEnhancerOptions): WritingEnhancer =>
   async ({ text, style, signal }: RewriteRequest = {} as RewriteRequest): Promise<RewriteResult> => {
     const inputError = getTextValidationError(text)
     if (inputError) throw new UserFacingError(inputError)
@@ -106,9 +177,10 @@ export const createWritingEnhancer = ({ getAiSettings, requestRewrite = requestA
 
     const settings = await readSettings(getAiSettings)
     if (!isAiConfigured(settings)) throw new UserFacingError(NOT_CONFIGURED_MESSAGE)
-    const label = `AI rewrite (${AI_PROVIDER_LABEL[settings.provider]})`
-
-    const reply = await requestRewrite({ provider: settings.provider, apiKey: settings.apiKey, model: resolveModel(settings), prompt, signal })
+    const request = { provider: settings.provider, model: resolveModel(settings), prompt, signal }
+    const activeKeySlot = await readActiveKeySlot(getActiveKeySlot)
+    const { reply, slot } = await requestWithKeyFailover({ settings, activeKeySlot, request, requestRewrite, setActiveKeySlot })
+    const label = ENGINE_LABEL[slot](AI_PROVIDER_LABEL[settings.provider])
     const rewritten = matchQuoteStyle(text, parseRewriteResponse(reply))
     if (isLeakedExample(text, rewritten)) throw new UserFacingError(UNRELATED_MESSAGE)
 

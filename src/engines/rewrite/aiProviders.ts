@@ -11,6 +11,10 @@ const REQUEST_TIMEOUT_MS = 30_000
 // request is sent again before the user hears about it: two more tries, a little later each time. Tests shorten them.
 const RETRY_DELAYS_MS = [1_000, 3_000]
 const OVERLOADED_STATUS = 503
+const RATE_LIMIT_STATUS = 429
+const NO_CREDIT_STATUS = 402
+// Answers about the key's account rather than the request, so another key may well get through.
+const KEY_LIMIT_STATUSES: readonly number[] = [RATE_LIMIT_STATUS, NO_CREDIT_STATUS]
 const MAX_DETAIL_LENGTH = 160
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 const CANCELLED_MESSAGE = 'The rewrite was cancelled.'
@@ -21,6 +25,15 @@ const KEY_MESSAGE = 'The AI provider rejected the API key. Check it in Settings.
 const WEBSITE_KEY_MESSAGE = 'This API key only works from websites. Create a key without website restrictions and save it in Settings.'
 const DATA_POLICY_MESSAGE = 'No OpenRouter provider can serve this model under your account settings. Choose another model, or change the data policy on openrouter.ai.'
 const OVERLOADED_MESSAGE = 'The AI provider is overloaded right now. Try again in a minute, or choose another model or provider in Settings.'
+
+// The key reached its rate limit or quota, or ran out of credit. Its own type, so a caller with a second key knows it
+// may switch to it.
+export class AiLimitError extends UserFacingError {
+  constructor(message: string) {
+    super(message)
+    this.name = 'AiLimitError'
+  }
+}
 
 export interface AiPrompt {
   system: string
@@ -83,9 +96,9 @@ interface FetchedJson {
 
 const HTTP_ERROR_MESSAGE: Record<number, string> = {
   401: KEY_MESSAGE,
-  402: 'Your account with the AI provider has no credit for this model. Add credit, or enter a model your account can use in Settings.',
+  [NO_CREDIT_STATUS]: 'Your account with the AI provider has no credit for this model. Add credit, or enter a model your account can use in Settings.',
   403: 'The AI provider refused the API key. Check it in Settings.',
-  429: "The AI provider's rate limit or quota was reached. Try again later.",
+  [RATE_LIMIT_STATUS]: "The AI provider's rate limit or quota was reached. Try again later.",
   [OVERLOADED_STATUS]: OVERLOADED_MESSAGE,
 }
 
@@ -284,7 +297,10 @@ export const requestAiRewrite = async ({ provider, apiKey, model, prompt, signal
   const providerLabel = AI_PROVIDER_LABEL[provider]
 
   const { response, body } = await fetchWithRetries(definition.buildRequest({ apiKey, model, prompt }), { signal, providerLabel, retryDelaysMs })
-  if (!response.ok) throw new UserFacingError(describeHttpError(response.status, body, { provider, providerLabel, model }))
+  if (!response.ok) {
+    const message = describeHttpError(response.status, body, { provider, providerLabel, model })
+    throw KEY_LIMIT_STATUSES.includes(response.status) ? new AiLimitError(message) : new UserFacingError(message)
+  }
 
   const detail = readProviderDetail(body)
   const finishMessage = lookup(FINISH_REASON_MESSAGE, readFinishReason(body))

@@ -1,7 +1,7 @@
 import type { Settings } from '../constants/settings.ts'
 import { EN_DICTIONARY } from '../engines/spelling/dictionary.ts'
 import { createSpellChecker, type SpellChecker } from '../engines/spelling/spellChecker.ts'
-import { getAiSettings, isAiConfigured } from '../services/aiSettings.ts'
+import { getActiveKeySlot, getAiSettings, isAiConfigured, setActiveKeySlot } from '../services/aiSettings.ts'
 import { createCorrectionPipeline, type CorrectionRequest } from '../services/correctionPipeline.ts'
 import { injectIntoOpenTabs, syncCustomSiteScripts } from '../services/customSiteScripts.ts'
 import { addIgnoredWord, getIgnoredWords } from '../services/ignoredWords.ts'
@@ -50,7 +50,7 @@ const inlineChecks = createInlineCheckRunner(runCorrectionPipeline)
 
 // AI rewrites only run from here, on an explicit request from the popup or the Ctrl+Shift+Space shortcut; the key is
 // read at request time.
-const rewriteWithAi = createWritingEnhancer({ getAiSettings })
+const rewriteWithAi = createWritingEnhancer({ getAiSettings, getActiveKeySlot, setActiveKeySlot })
 const rewrites = createLatestRunner((signal: AbortSignal, request: Omit<RewriteRequest, 'signal'>) => rewriteWithAi({ ...request, signal }))
 
 // Each popup also names itself, so two popups open in two windows never replace or cancel each other's request.

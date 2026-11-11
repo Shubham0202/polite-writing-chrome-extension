@@ -1,25 +1,36 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { AI_PROVIDERS, AI_PROVIDER_DEFAULT_MODEL, REWRITE_STYLES, type AiSettings, type RewriteStyle } from '../constants/ai.ts'
+import { AI_PROVIDERS, AI_PROVIDER_DEFAULT_MODEL, API_KEY_SLOTS, DEFAULT_AI_SETTINGS, REWRITE_STYLES, type AiSettings, type ApiKeySlot, type RewriteStyle } from '../constants/ai.ts'
 import { ENGINES, ENGINE_STATUS, MAX_TEXT_LENGTH, REWRITE_ACTION } from '../constants/corrections.ts'
-import type { AiRewriteRequest } from '../engines/rewrite/aiProviders.ts'
+import { AiLimitError, type AiRewriteRequest } from '../engines/rewrite/aiProviders.ts'
 import { UserFacingError } from '../utils/errors.ts'
 import { createWritingEnhancer } from './writingEnhancer.ts'
 
-const SETTINGS: AiSettings = { provider: AI_PROVIDERS.gemini, apiKey: 'sk-test', model: '' }
+const SETTINGS: AiSettings = { ...DEFAULT_AI_SETTINGS, provider: AI_PROVIDERS.gemini, apiKey: 'sk-test' }
+const TWO_KEYS: AiSettings = { ...SETTINGS, apiKey: 'sk-first', backupApiKey: 'sk-second' }
 const EXAMPLE = 'Hey shubham sir can I get the work from home for 2 days of next week that is Thursday and Friday. is this sentence is correct'
 const EXAMPLE_REWRITE = 'Hey Shubham Sir, I wanted to ask if I could work from home on Thursday and Friday next week.'
 
-// A provider that answers with the given text (or fails) and records what it was asked.
-const createEnhancer = (reply: string | Error | ((request: AiRewriteRequest) => string), settings: AiSettings = SETTINGS) => {
+// A provider that answers with the given text (or fails) and records what it was asked, and an active-key store that
+// records each write and serves it to the next rewrite.
+const createEnhancer = (reply: string | Error | ((request: AiRewriteRequest) => string), settings: AiSettings = SETTINGS, activeKeySlot: ApiKeySlot = API_KEY_SLOTS.primary) => {
   const calls: AiRewriteRequest[] = []
+  const slotWrites: ApiKeySlot[] = []
+  let currentSlot = activeKeySlot
   const requestRewrite = async (request: AiRewriteRequest) => {
     calls.push(request)
     if (reply instanceof Error) throw reply
     return typeof reply === 'function' ? reply(request) : JSON.stringify({ rewritten: reply })
   }
-  return { calls, rewrite: createWritingEnhancer({ getAiSettings: async () => settings, requestRewrite }) }
+  const setActiveKeySlot = async (slot: ApiKeySlot) => {
+    slotWrites.push(slot)
+    currentSlot = slot
+  }
+  return { calls, slotWrites, rewrite: createWritingEnhancer({ getAiSettings: async () => settings, getActiveKeySlot: async () => currentSlot, setActiveKeySlot, requestRewrite }) }
 }
+
+const LIMIT_REACHED = new AiLimitError("The AI provider's rate limit or quota was reached. Try again later.")
+const rewriteReply = JSON.stringify({ rewritten: EXAMPLE_REWRITE })
 
 const assertUserFacing = (pattern: RegExp) => (error: unknown) => {
   assert.ok(error instanceof UserFacingError, `${error} is user-facing`)
@@ -44,6 +55,8 @@ describe('writing enhancer', () => {
       getAiSettings: async () => {
         throw new Error('QUOTA_BYTES exceeded')
       },
+      getActiveKeySlot: async () => API_KEY_SLOTS.primary,
+      setActiveKeySlot: async () => {},
       requestRewrite: async (request) => calls.push(request),
     })
     const originalConsoleError = console.error
@@ -72,7 +85,7 @@ describe('writing enhancer', () => {
     assert.match(call.prompt.user, /^Style: Make professional/)
     assert.ok(call.prompt.user.endsWith(`<text>\n${EXAMPLE}\n</text>`))
 
-    const custom = createEnhancer(EXAMPLE_REWRITE, { provider: AI_PROVIDERS.groq, apiKey: 'gsk', model: 'qwen/qwen3.8-27b' })
+    const custom = createEnhancer(EXAMPLE_REWRITE, { ...SETTINGS, provider: AI_PROVIDERS.groq, apiKey: 'gsk', model: 'qwen/qwen3.8-27b' })
     await custom.rewrite({ text: EXAMPLE, style: REWRITE_STYLES.polite })
     assert.equal(custom.calls[0].model, 'qwen/qwen3.8-27b')
   })
@@ -193,5 +206,175 @@ describe('writing enhancer', () => {
 
     const prose = createEnhancer(() => 'Sure! Here is a better version.')
     await assert.rejects(prose.rewrite({ text: EXAMPLE, style: REWRITE_STYLES.polite }), assertUserFacing(/unexpected response/))
+  })
+
+  describe('backup API key', () => {
+    const polite = { text: EXAMPLE, style: REWRITE_STYLES.polite }
+    const limitedKeys = (...keys: string[]) => (request: AiRewriteRequest) => {
+      if (keys.includes(request.apiKey)) throw LIMIT_REACHED
+      return rewriteReply
+    }
+
+    it('uses only the first key while it works, and never touches the settings', async () => {
+      const { calls, slotWrites, rewrite } = createEnhancer(EXAMPLE_REWRITE, TWO_KEYS)
+      await rewrite(polite)
+      const result = await rewrite(polite)
+      assert.deepEqual(calls.map((call) => call.apiKey), ['sk-first', 'sk-first'])
+      assert.deepEqual(slotWrites, [])
+      assert.equal(result.engines[0].label, 'AI rewrite (Google Gemini)')
+    })
+
+    it('names the backup key in the result label whenever it answered', async () => {
+      let limited = ['sk-first']
+      const { rewrite } = createEnhancer((request) => limitedKeys(...limited)(request), TWO_KEYS)
+      const switched = await rewrite(polite)
+      const stayed = await rewrite(polite)
+      limited = ['sk-second']
+      const switchedBack = await rewrite(polite)
+      assert.deepEqual(
+        [switched, stayed, switchedBack].map((result) => result.engines[0].label),
+        ['AI rewrite (Google Gemini, backup key)', 'AI rewrite (Google Gemini, backup key)', 'AI rewrite (Google Gemini)'],
+      )
+
+      const unchanged = createEnhancer((request) => (request.apiKey === 'sk-first' ? limitedKeys('sk-first')(request) : JSON.stringify({ rewritten: EXAMPLE })), TWO_KEYS)
+      assert.equal((await unchanged.rewrite(polite)).engines[0].label, 'AI rewrite (Google Gemini, backup key)')
+    })
+
+    it('switches to the other key when one reaches its limit, stays there, and switches back when that one does', async () => {
+      let limited = ['sk-first']
+      const { calls, slotWrites, rewrite } = createEnhancer((request) => limitedKeys(...limited)(request), TWO_KEYS)
+
+      await rewrite(polite)
+      await rewrite(polite)
+      limited = ['sk-second']
+      await rewrite(polite)
+
+      assert.deepEqual(calls.map((call) => call.apiKey), ['sk-first', 'sk-second', 'sk-second', 'sk-second', 'sk-first'])
+      assert.deepEqual(slotWrites, [API_KEY_SLOTS.backup, API_KEY_SLOTS.primary])
+    })
+
+    it('sends the same request with the other key', async () => {
+      const { calls, rewrite } = createEnhancer(limitedKeys('sk-first'), TWO_KEYS)
+      const controller = new AbortController()
+      await rewrite({ ...polite, signal: controller.signal })
+      const [first, second] = calls
+      assert.deepEqual({ ...second, apiKey: first.apiKey }, first)
+    })
+
+    it('says so when both keys reach their limit, keeping the provider message, and starts with the first key again next time', async () => {
+      const { calls, slotWrites, rewrite } = createEnhancer(limitedKeys('sk-first', 'sk-second'), TWO_KEYS)
+      await assert.rejects(rewrite(polite), assertUserFacing(/^The API key reached its limit, so the backup API key was tried\. The AI provider's rate limit or quota was reached/))
+      await assert.rejects(rewrite(polite))
+      assert.deepEqual(calls.map((call) => call.apiKey), ['sk-first', 'sk-second', 'sk-first', 'sk-second'])
+      assert.deepEqual(slotWrites, [])
+    })
+
+    it('does not move to a backup key that fails after the switch, and names it in the error', async () => {
+      let backupError: Error | null = new UserFacingError('The AI provider rejected the API key. Check it in Settings.')
+      const { calls, slotWrites, rewrite } = createEnhancer((request) => {
+        if (request.apiKey === 'sk-first') throw LIMIT_REACHED
+        if (backupError) throw backupError
+        return rewriteReply
+      }, TWO_KEYS)
+
+      await assert.rejects(rewrite(polite), assertUserFacing(/^The API key reached its limit, so the backup API key was tried\. The AI provider rejected the API key/))
+      assert.deepEqual(slotWrites, [])
+      backupError = null
+      await rewrite(polite)
+      assert.deepEqual(calls.map((call) => call.apiKey), ['sk-first', 'sk-second', 'sk-first', 'sk-second'])
+      assert.deepEqual(slotWrites, [API_KEY_SLOTS.backup])
+    })
+
+    it('hands back to the first key when the backup key it was on fails for another reason, so it is never stuck there', async () => {
+      const revoked = new UserFacingError('The AI provider rejected the API key. Check it in Settings.')
+      const { calls, slotWrites, rewrite } = createEnhancer((request) => {
+        if (request.apiKey === 'sk-second') throw revoked
+        return rewriteReply
+      }, TWO_KEYS, API_KEY_SLOTS.backup)
+
+      await assert.rejects(rewrite(polite), (error) => error === revoked)
+      await rewrite(polite)
+      assert.deepEqual(calls.map((call) => call.apiKey), ['sk-second', 'sk-first'])
+      assert.deepEqual(slotWrites, [API_KEY_SLOTS.primary])
+    })
+
+    it('passes a cancellation during the second try on, and does not move to that key', async () => {
+      const cancelled = new UserFacingError('The rewrite was cancelled.')
+      const { slotWrites, rewrite } = createEnhancer((request) => {
+        throw request.apiKey === 'sk-first' ? LIMIT_REACHED : cancelled
+      }, TWO_KEYS)
+      await assert.rejects(rewrite(polite), assertUserFacing(/was cancelled/))
+      assert.deepEqual(slotWrites, [])
+    })
+
+    it('passes an unexpected failure of the second try on unchanged', async () => {
+      const bug = new TypeError('boom')
+      const { rewrite } = createEnhancer((request) => {
+        throw request.apiKey === 'sk-first' ? LIMIT_REACHED : bug
+      }, TWO_KEYS)
+      await assert.rejects(rewrite(polite), (error) => error === bug)
+    })
+
+    it('keeps the provider message when there is no backup key to switch to', async () => {
+      const { calls, slotWrites, rewrite } = createEnhancer(LIMIT_REACHED)
+      await assert.rejects(rewrite(polite), assertUserFacing(/rate limit or quota was reached/))
+      assert.equal(calls.length, 1)
+      assert.deepEqual(slotWrites, [])
+    })
+
+    it('does not switch keys for any other failure', async () => {
+      const { calls, slotWrites, rewrite } = createEnhancer(new UserFacingError('The AI provider rejected the API key. Check it in Settings.'), TWO_KEYS)
+      await assert.rejects(rewrite(polite), assertUserFacing(/rejected the API key/))
+      assert.equal(calls.length, 1)
+      assert.deepEqual(slotWrites, [])
+    })
+
+    it('goes on with the other key when the switch cannot be saved', async () => {
+      const calls: string[] = []
+      const rewrite = createWritingEnhancer({
+        getAiSettings: async () => TWO_KEYS,
+        getActiveKeySlot: async () => API_KEY_SLOTS.primary,
+        setActiveKeySlot: async () => {
+          throw new Error('QUOTA_BYTES exceeded')
+        },
+        requestRewrite: async (request) => {
+          calls.push(request.apiKey)
+          return limitedKeys('sk-first')(request)
+        },
+      })
+      const originalConsoleError = console.error
+      console.error = () => {}
+      const result = await rewrite(polite)
+      console.error = originalConsoleError
+      assert.deepEqual(calls, ['sk-first', 'sk-second'])
+      assert.ok(result.suggestions.length > 0)
+    })
+
+    it('starts with the first key when the backup key it was on has been removed', async () => {
+      const { calls, rewrite } = createEnhancer(EXAMPLE_REWRITE, SETTINGS, API_KEY_SLOTS.backup)
+      await rewrite(polite)
+      assert.deepEqual(calls.map((call) => call.apiKey), ['sk-test'])
+    })
+
+    it('starts with the first key when it cannot read which key is active, and still rewrites', async () => {
+      const calls: string[] = []
+      const rewrite = createWritingEnhancer({
+        getAiSettings: async () => TWO_KEYS,
+        getActiveKeySlot: async () => {
+          throw new Error('storage unavailable')
+        },
+        setActiveKeySlot: async () => {},
+        requestRewrite: async (request) => {
+          calls.push(request.apiKey)
+          return rewriteReply
+        },
+      })
+      const originalConsoleError = console.error
+      console.error = () => {}
+      const result = await rewrite(polite)
+      console.error = originalConsoleError
+      assert.deepEqual(calls, ['sk-first'])
+      assert.ok(result.suggestions.length > 0)
+    })
   })
 })

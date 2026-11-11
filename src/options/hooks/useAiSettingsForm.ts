@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { AiSettings } from '../../constants/ai.ts'
-import { getApiKeyValidationError, getModelValidationError, updateAiSettings } from '../../services/aiSettings.ts'
+import type { AiProvider, AiSettings } from '../../constants/ai.ts'
+import { getApiKeyValidationError, getBackupApiKeyValidationError, getModelValidationError, getProviderSwitchFields, updateAiSettings } from '../../services/aiSettings.ts'
 
 export const FORM_STATUS = Object.freeze({
   idle: 'idle',
@@ -11,7 +11,7 @@ export const FORM_STATUS = Object.freeze({
 export type FormStatus = (typeof FORM_STATUS)[keyof typeof FORM_STATUS]
 
 export interface AiSettingsFormError {
-  field: 'apiKey' | 'model' | null
+  field: 'apiKey' | 'backupApiKey' | 'model' | null
   message: string
 }
 
@@ -20,6 +20,7 @@ export interface AiSettingsFormState {
   error: AiSettingsFormError | null
   status: FormStatus
   update: (changes: Partial<AiSettings>) => void
+  selectProvider: (provider: AiProvider) => void
   save: () => Promise<boolean>
   remove: () => Promise<void>
 }
@@ -27,7 +28,7 @@ export interface AiSettingsFormState {
 // No Chrome permission is involved: every provider answers cross-origin requests from the extension, like the online
 // LanguageTool service does, so saving is validation plus storage.
 export const useAiSettingsForm = (stored: AiSettings): AiSettingsFormState => {
-  const [form, setForm] = useState<AiSettings>({ provider: stored.provider, apiKey: stored.apiKey, model: stored.model })
+  const [form, setForm] = useState<AiSettings>({ provider: stored.provider, apiKey: stored.apiKey, backupApiKey: stored.backupApiKey, model: stored.model })
   // The error names the field it is about, so the right input is marked invalid for assistive technology.
   const [error, setError] = useState<AiSettingsFormError | null>(null)
   const [status, setStatus] = useState<FormStatus>(FORM_STATUS.idle)
@@ -37,6 +38,8 @@ export const useAiSettingsForm = (stored: AiSettings): AiSettingsFormState => {
     setError(null)
     setStatus(FORM_STATUS.idle)
   }
+
+  const selectProvider = (provider: AiProvider) => update(getProviderSwitchFields(provider, stored))
 
   const refuse = (field: AiSettingsFormError['field'], message: string) => {
     setError({ field, message })
@@ -57,6 +60,8 @@ export const useAiSettingsForm = (stored: AiSettings): AiSettingsFormState => {
   const save = async () => {
     const keyError = getApiKeyValidationError(form.apiKey)
     if (keyError) return refuse('apiKey', keyError)
+    const backupKeyError = getBackupApiKeyValidationError(form.backupApiKey, form.apiKey)
+    if (backupKeyError) return refuse('backupApiKey', backupKeyError)
     const modelError = getModelValidationError(form.model)
     if (modelError) return refuse('model', modelError)
     if (!(await store(form, 'The settings could not be saved. Try again.'))) return false
@@ -65,13 +70,14 @@ export const useAiSettingsForm = (stored: AiSettings): AiSettingsFormState => {
     return true
   }
 
-  // Only the key goes; a model the user typed is still right for the next key.
+  // Only the keys go; a model the user typed is still right for the next key. A backup key alone is never kept: it
+  // is only used alongside the first key.
   const remove = async () => {
-    if (!(await store({ apiKey: '' }, 'The key could not be removed. Try again.'))) return
-    setForm((current) => ({ ...current, apiKey: '' }))
+    if (!(await store({ apiKey: '', backupApiKey: '' }, 'The key could not be removed. Try again.'))) return
+    setForm((current) => ({ ...current, apiKey: '', backupApiKey: '' }))
     setError(null)
     setStatus(FORM_STATUS.removed)
   }
 
-  return { form, error, status, update, save, remove }
+  return { form, error, status, update, selectProvider, save, remove }
 }

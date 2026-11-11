@@ -12,7 +12,7 @@ const INPUT_CLASS =
 const STATUS_MESSAGE: Record<FormStatus, (provider: AiProvider) => string | null> = {
   [FORM_STATUS.idle]: () => null,
   [FORM_STATUS.saved]: (provider: AiProvider) => `Saved. Rewrite with AI in the popup now uses ${AI_PROVIDER_LABEL[provider]}.`,
-  [FORM_STATUS.removed]: () => 'The API key was removed. Rewrite with AI is off until you add one.',
+  [FORM_STATUS.removed]: () => 'Removed. Rewrite with AI is off until you add an API key.',
 }
 
 interface FieldProps {
@@ -30,12 +30,34 @@ const Field = ({ id, label, children }: FieldProps) => (
   </div>
 )
 
+interface ApiKeyInputProps {
+  id: string
+  value: string
+  placeholder: string
+  isInvalid: boolean
+  onChange: (value: string) => void
+}
+
+const ApiKeyInput = ({ id, value, placeholder, isInvalid, onChange }: ApiKeyInputProps) => (
+  <input
+    id={id}
+    type="password"
+    autoComplete="off"
+    spellCheck={false}
+    value={value}
+    onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
+    placeholder={placeholder}
+    aria-invalid={isInvalid}
+    className={INPUT_CLASS}
+  />
+)
+
 interface AiSettingsFormProps {
   stored: AiSettings
 }
 
 const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
-  const { form, error, status, update, save, remove } = useAiSettingsForm(stored)
+  const { form, error, status, update, selectProvider, save, remove } = useAiSettingsForm(stored)
   const statusMessage = STATUS_MESSAGE[status](form.provider)
   const suggestedModels = AI_PROVIDER_SUGGESTED_MODELS[form.provider]
   const hasSuggestions = suggestedModels.length > 0
@@ -49,8 +71,8 @@ const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <Field id="ai-provider" label="Provider">
         <div className="flex items-center gap-3">
-          {/* Model names are provider-specific, so a switched provider starts from its default, shown as the placeholder. */}
-          <Select id="ai-provider" className="py-2" value={form.provider} onChange={(event: ChangeEvent<HTMLSelectElement>) => update({ provider: event.target.value as AiProvider, model: '' })}>
+          {/* A switched provider starts from its default model, shown as the placeholder, and without the other provider's keys. */}
+          <Select id="ai-provider" className="py-2" value={form.provider} onChange={(event: ChangeEvent<HTMLSelectElement>) => selectProvider(event.target.value as AiProvider)}>
             {Object.values(AI_PROVIDERS).map((provider) => (
               <option key={provider} value={provider}>
                 {AI_PROVIDER_LABEL[provider]}
@@ -63,17 +85,21 @@ const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
         </div>
       </Field>
       <Field id="ai-api-key" label="API key">
-        <input
-          id="ai-api-key"
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          value={form.apiKey}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => update({ apiKey: event.target.value })}
-          placeholder="Paste your key"
-          aria-invalid={error?.field === 'apiKey'}
-          className={INPUT_CLASS}
+        <ApiKeyInput id="ai-api-key" value={form.apiKey} placeholder="Paste your key" isInvalid={error?.field === 'apiKey'} onChange={(apiKey) => update({ apiKey })} />
+      </Field>
+      <Field id="ai-backup-api-key" label="Backup API key (optional)">
+        <ApiKeyInput
+          id="ai-backup-api-key"
+          value={form.backupApiKey}
+          placeholder={`Paste a second ${AI_PROVIDER_LABEL[form.provider]} key`}
+          isInvalid={error?.field === 'backupApiKey'}
+          onChange={(backupApiKey) => update({ backupApiKey })}
         />
+        <p className="text-xs text-slate-500 dark:text-neutral-400">
+          Used only when a key reaches its rate limit or quota, or runs out of credit. Rewrites then stay on the other key until the same happens to
+          it, and switch back.
+          Create it in a different account or project: keys from the same one share its limit.
+        </p>
       </Field>
       <Field id="ai-model" label="Model">
         <input
@@ -105,7 +131,7 @@ const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
         </Button>
         {stored.apiKey && (
           <Button variant="ghost" onClick={remove}>
-            Remove key
+            {stored.backupApiKey ? 'Remove keys' : 'Remove key'}
           </Button>
         )}
       </div>
@@ -121,8 +147,8 @@ const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
       )}
       <p className="text-xs text-slate-500 dark:text-neutral-400">
         Rewrite with AI sends the text in the popup to {AI_PROVIDER_LABEL[form.provider]} only when you press that button. With the switch below on,
-        Ctrl+Shift+Space does the same for the field you are typing in on a website. Checks as you type never use it. The key is stored in
-        Chrome&apos;s extension storage on this computer; Remove key deletes it.
+        Ctrl+Shift+Space does the same for the field you are typing in on a website. Checks as you type never use it. The keys are stored in
+        Chrome&apos;s extension storage on this computer; the Remove button deletes them.
       </p>
     </form>
   )

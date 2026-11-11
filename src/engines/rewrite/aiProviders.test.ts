@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, describe, it } from 'node:test'
 import { AI_PROVIDERS, type AiProvider } from '../../constants/ai.ts'
 import { UserFacingError } from '../../utils/errors.ts'
-import { requestAiRewrite, type AiRewriteRequest } from './aiProviders.ts'
+import { AiLimitError, requestAiRewrite, type AiRewriteRequest } from './aiProviders.ts'
 
 interface MockRequestInit {
   method: string
@@ -116,6 +116,19 @@ describe('AI providers', () => {
     ] satisfies Array<[number, RegExp]>) {
       mockFetch(Response.json({ error: { message: 'API key not valid. Please pass a valid API key.' } }, { status }))
       await assert.rejects(request(AI_PROVIDERS.gemini), assertUserFacing(pattern), String(status))
+    }
+  })
+
+  it('marks only a reached rate limit or quota, or a lack of credit, as a limit error, so a backup key can take over', async () => {
+    for (const provider of Object.values(AI_PROVIDERS)) {
+      for (const status of [429, 402]) {
+        mockFetch(Response.json({ error: { message: 'Resource has been exhausted (e.g. check quota).' } }, { status }))
+        await assert.rejects(request(provider), (error) => error instanceof AiLimitError, `${provider} ${status}`)
+      }
+    }
+    for (const status of [400, 401, 403, 404, 500]) {
+      mockFetch(Response.json({ error: { message: 'nope' } }, { status }))
+      await assert.rejects(request(AI_PROVIDERS.openRouter), (error) => error instanceof UserFacingError && !(error instanceof AiLimitError), String(status))
     }
   })
 

@@ -188,7 +188,7 @@ Changes save as soon as you make them. Only the AI provider, key and model need 
 | Keyboard shortcuts | The key Chrome has for each shortcut in this profile, a warning when one is not set, and **Change shortcuts**, which opens `chrome://extensions/shortcuts` |
 | Websites | Turn a site off to pause it there, or add one. Chrome asks for access to that site only, and removing the site gives that access back |
 | Ignored words | The personal dictionary. Words can be removed here |
-| AI rewriting | The provider, API key and model that **Rewrite with AI** uses, and whether Ctrl+Shift+Space rewrites with AI on websites and in which style. Optional; the key stays on this computer and **Remove key** deletes it |
+| AI rewriting | The provider, API key, optional backup API key and model that **Rewrite with AI** uses, and whether Ctrl+Shift+Space rewrites with AI on websites and in which style. Optional; the keys stay on this computer and **Remove key** deletes them |
 | Appearance | Light, dark, or matching your system, for the popup, Settings and the suggestions on websites |
 
 The popup can also pause the site you are on. Chat inside Gmail follows the Gmail switch; the Google Chat switch is for `chat.google.com` itself. Settings are saved in Chrome's local extension storage, on this computer.
@@ -241,13 +241,24 @@ The default model is the quickest. If its rewrites are too plain, try a larger m
 
 #### Set it up
 
-1. Open **Settings → AI rewriting**, choose the provider, paste the key and press **Save**. Leave the model empty to use the default, or type another model name there. For OpenRouter, clicking the field suggests free models that can rewrite.
+1. Open **Settings → AI rewriting**, choose the provider, paste the key (and, if you like, a second key under **Backup API key**; see [Backup API key](#backup-api-key)) and press **Save**. Leave the model empty to use the default, or type another model name there. For OpenRouter, clicking the field suggests free models that can rewrite.
 2. In the popup, pick a [style](#rewrite-styles) next to **Rewrite with AI** and press the button. While there is no key, the button's neighbour says **Set up** and opens Settings.
 3. Review the result like any correction: the original and the rewrite side by side, each change ticked or unticked, then **Copy** or **Replace input** (with **Undo**). Nothing changes until you choose to replace.
 
-What is sent, and when: only the text in the popup and the chosen style, only when you press the button, straight from the extension to the provider over HTTPS. With **Rewrite with AI from the keyboard shortcut** turned on in Settings, pressing Ctrl+Shift+Space in a field on a website also sends that field's text, in the style chosen there. Checks as you type and the other popup buttons never use it, and no extra Chrome permission is involved. The key is kept in Chrome's extension storage on this computer, is only ever sent to the provider you chose, and **Remove key** deletes it. Read the provider's terms and privacy policy before sending work messages to it.
+What is sent, and when: only the text in the popup and the chosen style, only when you press the button, straight from the extension to the provider over HTTPS. With **Rewrite with AI from the keyboard shortcut** turned on in Settings, pressing Ctrl+Shift+Space in a field on a website also sends that field's text, in the style chosen there. Checks as you type and the other popup buttons never use it, and no extra Chrome permission is involved. The keys are kept in Chrome's extension storage on this computer, are only ever sent to the provider you chose, and **Remove key** deletes them. Read the provider's terms and privacy policy before sending work messages to it.
 
 Every rewrite is checked before it is shown: it is not used if it changed or added a link, email address, @mention or code, or if it grew out of proportion, and a rewrite that only changes spacing counts as no change. Multi-sentence texts are offered sentence by sentence when the sentences still correspond, otherwise as one change. Requests give up after 30 seconds, **Cancel** stops one early, and closing the popup cancels it too. If the provider rejects the key or the model, the message in the popup says which one to check. Texts are limited to 5,000 characters, like every other correction.
+
+#### Backup API key
+
+A second key for the same provider, used only when a key reaches its rate limit or quota (HTTP 429) or runs out of credit (HTTP 402). The same rewrite is then sent again with the other key straight away, and later rewrites stay on that key until the same happens to it; then they switch back to the first. Any other error, such as a rejected key, a model that does not exist or an overloaded provider, is shown as it is, without switching.
+
+- The result in the popup says **AI rewrite (provider, backup key)** when the backup key answered.
+- If both keys are at their limit, the message says so and keeps the provider's own explanation.
+- If the backup key fails right after a switch, for example because it was revoked, the message names it and the next rewrite starts with the first key again.
+- **Save** always starts again from the first key. The remove button, **Remove keys** once a backup key is saved, deletes both keys.
+- Choosing another provider in Settings empties both key fields, because a key only works with the provider that issued it and is never sent to another one. Choosing the saved provider again brings its keys back.
+- Create the backup key in a different account or project. Providers count limits per account or project, not per key: Gemini per Google Cloud project and Groq per organization, while OpenRouter says that extra keys or accounts do not change its rate limits. A second key from the same place shares the first key's limit.
 
 ### Local LanguageTool server (optional)
 
@@ -286,7 +297,7 @@ Your text leaves your computer only in these cases, all off by default:
 A LanguageTool server you run yourself listens on `localhost`, so using it sends nothing to the internet.
 
 - **Never stored:** your text.
-- **Saved in Chrome's local extension storage, on this computer:** your settings, your ignored words and, if you add one, your AI API key. The key is only ever sent to the provider you chose, and **Remove key** deletes it.
+- **Saved in Chrome's local extension storage, on this computer:** your settings, your ignored words and, if you add them, your AI API key and backup API key. The keys are only ever sent to the provider you chose, and **Remove key** deletes them.
 - **Never watched:** password, payment, one-time-code, read-only and code-editor fields.
 - **Kept away from the page:** the suggestion UI lives in a closed Shadow DOM, so sites cannot restyle it or read the text in it.
 - **Not trusted from the page:** messages to the background service are only accepted from the part of the extension that really sends them, and key presses a page fakes never trigger a shortcut.
@@ -297,7 +308,7 @@ When you use an online service, its own terms and privacy policy apply: see [Lan
 
 | Permission | Why |
 |------------|-----|
-| `storage` | Remembers your settings, the Online grammar check switch, the words you chose to ignore and, if you add one, your AI API key |
+| `storage` | Remembers your settings, the Online grammar check switch, the words you chose to ignore and, if you add them, your AI API keys |
 | `scripting` | Injects the suggestion UI into a page the first time there is something to show, and registers sites you add |
 | `http://localhost/*`, `http://127.0.0.1/*` | Lets the service worker reach a LanguageTool server running on this computer |
 | Optional: access to any website (`*://*/*`) | Declared as optional, so nothing is granted at install. Adding a site in Settings asks Chrome for that one site |
