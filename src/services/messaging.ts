@@ -1,4 +1,5 @@
 import type { RewriteStyle } from '../constants/ai.ts'
+import type { Settings, ToggleSettingKey } from '../constants/settings.ts'
 import type { CorrectionRequest, CorrectionResult, InlineCheckResult } from './correctionPipeline.ts'
 import type { RewriteResult } from './writingEnhancer.ts'
 
@@ -14,6 +15,9 @@ export const MESSAGE_TYPES = Object.freeze({
   runRewrite: 'RUN_REWRITE',
   cancelRewrite: 'CANCEL_REWRITE',
   runShortcutFallback: 'RUN_SHORTCUT_FALLBACK',
+  getSettings: 'GET_SETTINGS',
+  setToggleSetting: 'SET_TOGGLE_SETTING',
+  settingsChanged: 'SETTINGS_CHANGED',
 })
 
 export type MessageType = (typeof MESSAGE_TYPES)[keyof typeof MESSAGE_TYPES]
@@ -25,6 +29,15 @@ export const COMMAND_MESSAGES = Object.freeze({
 })
 
 export type CommandMessageType = (typeof COMMAND_MESSAGES)[keyof typeof COMMAND_MESSAGES]
+
+// What the service worker sends to the content scripts of a tab: a relayed shortcut, or the settings after a change,
+// since content scripts cannot read storage. None of them has an answer.
+export type PageMessageType = CommandMessageType | typeof MESSAGE_TYPES.settingsChanged
+
+export interface PageMessage {
+  type: PageMessageType
+  payload?: { settings: Settings }
+}
 
 export interface PingResult {
   version: string
@@ -46,6 +59,9 @@ export interface MessageContract {
   [MESSAGE_TYPES.cancelRewrite]: { payload: { clientId?: string } | undefined; result: void }
   // A page saw the default key of a shortcut that Chrome may have left unset.
   [MESSAGE_TYPES.runShortcutFallback]: { payload: { command: string }; result: void }
+  // Storage holds the AI keys and is closed to content scripts, so they ask for the settings here instead.
+  [MESSAGE_TYPES.getSettings]: { payload: undefined; result: Settings }
+  [MESSAGE_TYPES.setToggleSetting]: { payload: { key: ToggleSettingKey; isEnabled: boolean }; result: void }
 }
 
 export type RequestMessageType = keyof MessageContract

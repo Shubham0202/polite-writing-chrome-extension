@@ -1,4 +1,4 @@
-import { LOCAL_LANGUAGE_TOOL } from '../constants/settings.ts'
+import { LOCAL_LANGUAGE_TOOL, type Settings } from '../constants/settings.ts'
 import { EN_DICTIONARY } from '../engines/spelling/dictionary.ts'
 import { createSpellChecker, type SpellChecker } from '../engines/spelling/spellChecker.ts'
 import { getActiveKeySlot, getAiSettings, isAiConfigured, setActiveKeySlot } from '../services/aiSettings.ts'
@@ -18,12 +18,13 @@ import {
   type MessageResponse,
   type MessagePayload,
   type MessageSenderInfo,
+  type PageMessage,
   type RequestMessageType,
   type SenderRole,
 } from '../services/messaging.ts'
 import { isOnlineGrammarAllowed } from '../services/onlineGrammar.ts'
 import { findSettingsWithoutAccess } from '../services/permissionSync.ts'
-import { getSettings, onSettingsChanged, updateSettings } from '../services/settings.ts'
+import { getSettings, isToggleSettingKey, onSettingsChanged, updateSettings } from '../services/settings.ts'
 import { isShortcutUnset } from '../services/shortcuts.ts'
 import { createWritingEnhancer, type RewriteRequest } from '../services/writingEnhancer.ts'
 import { devError } from '../utils/devLog.ts'
@@ -36,6 +37,15 @@ const ONLINE_LANGUAGE_TOOL_OPTIONS = {
   language: 'en-US',
   unreachableMessage: 'Could not reach LanguageTool online. Check your internet connection.',
 }
+
+// Storage holds the AI keys, and content scripts run inside the web page's process, so only the extension's own pages
+// and this worker may use it; content scripts get their settings through messages. Chrome remembers the choice. A
+// version that cannot restrict local storage refuses it, which leaves storage as before and everything still working.
+// The call is wrapped so that even a synchronous throw cannot stop the listeners below from being registered.
+const closeStorageToContentScripts = async () => {
+  await chrome.storage.local.setAccessLevel({ accessLevel: chrome.storage.AccessLevel.TRUSTED_CONTEXTS })
+}
+closeStorageToContentScripts().catch((error: unknown) => devError('Could not close storage to content scripts', error))
 
 let spellChecker: SpellChecker | null = null
 // Building the dictionary takes a moment, so it happens on first use rather than on every service worker start.
@@ -74,6 +84,8 @@ const MESSAGE_SENDER_ROLES: Record<RequestMessageType, readonly (SenderRole | nu
   [MESSAGE_TYPES.cancelRewrite]: [SENDER_ROLES.extensionPage, SENDER_ROLES.contentScript],
   [MESSAGE_TYPES.loadInlineUi]: [SENDER_ROLES.contentScript],
   [MESSAGE_TYPES.runShortcutFallback]: [SENDER_ROLES.contentScript],
+  [MESSAGE_TYPES.getSettings]: [SENDER_ROLES.contentScript],
+  [MESSAGE_TYPES.setToggleSetting]: [SENDER_ROLES.contentScript],
 }
 
 const sendCommandToTab = (command: string, tabId: number | undefined) => {
@@ -81,6 +93,16 @@ const sendCommandToTab = (command: string, tabId: number | undefined) => {
   if (!type || !tabId) return
   // Tabs without a supported site have no content script to answer.
   chrome.tabs.sendMessage(tabId, { type }).catch(() => {})
+}
+
+// Every tab is told, rather than only those of listed sites, so a tab of a site just removed from the list hears it too
+// and stops. Tabs without a content script do not answer.
+const sendSettingsToTabs = async (settings: Settings) => {
+  const message: PageMessage = { type: MESSAGE_TYPES.settingsChanged, payload: { settings } }
+  const tabs = await chrome.tabs.query({})
+  tabs.forEach(({ id }) => {
+    if (id) chrome.tabs.sendMessage(id, message).catch(() => {})
+  })
 }
 
 const isAllowedSender = (type: unknown, sender: MessageSenderInfo | undefined) => lookup(MESSAGE_SENDER_ROLES, type)?.includes(getRole(sender)) ?? false
@@ -112,6 +134,13 @@ const MESSAGE_HANDLERS: MessageHandlers = {
   [MESSAGE_TYPES.runShortcutFallback]: async (payload, { tab }) => {
     if (typeof payload?.command === 'string' && (await isShortcutUnset(payload.command))) sendCommandToTab(payload.command, tab?.id)
   },
+  // Only the settings entry: the AI settings are stored apart and never leave the extension's own pages and this worker.
+  [MESSAGE_TYPES.getSettings]: () => getSettings(),
+  [MESSAGE_TYPES.setToggleSetting]: async (payload) => {
+    const { key, isEnabled } = payload ?? {}
+    if (!isToggleSettingKey(key) || typeof isEnabled !== 'boolean') throw new Error('This setting cannot be changed from a website.')
+    await updateSettings({ [key]: isEnabled })
+  },
 }
 
 // Changes are queued, because two running at once would both try to register the same script. Each one reads the
@@ -130,6 +159,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 })
 
 onSettingsChanged((settings, previous) => {
+  sendSettingsToTabs(settings).catch(() => {})
   if (settings.customSites.join() !== previous.customSites.join()) queueSiteSync()
 })
 

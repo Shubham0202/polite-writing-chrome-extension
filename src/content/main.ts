@@ -1,8 +1,8 @@
 import { ENGINE_STATUS } from '../constants/corrections.ts'
-import { DEFAULT_SETTINGS, type Settings } from '../constants/settings.ts'
+import { DEFAULT_SETTINGS, TOGGLE_SETTING_KEYS, type Settings, type ToggleSettingKey } from '../constants/settings.ts'
 import type { InlineCheckResult } from '../services/correctionPipeline.ts'
-import { MESSAGE_TYPES, sendMessage, type CommandMessageType } from '../services/messaging.ts'
-import { getSettings, isAssistanceActive, onSettingsChanged, updateSettings } from '../services/settings.ts'
+import { MESSAGE_TYPES, sendMessage, type PageMessage, type PageMessageType } from '../services/messaging.ts'
+import { isAssistanceActive } from '../services/settings.ts'
 import { getDefaultShortcuts } from '../services/shortcuts.ts'
 import { watchTheme } from '../services/theme.ts'
 import { devLog, type LogDetails } from '../utils/devLog.ts'
@@ -17,8 +17,6 @@ import { createTextChecker } from './textChecker.ts'
 declare global {
   var writeBetterStarted: boolean | undefined
 }
-
-type ToggleSettingKey = 'isAiShortcutEnabled' | 'isCloseOnAcceptEnabled'
 
 const CHECK_SETTINGS: (keyof Settings)[] = ['isSpellingEnabled', 'isGrammarEnabled', 'isPoliteEnabled', 'isProfessionalEnabled']
 
@@ -77,9 +75,9 @@ const inputFieldObserver = createInputFieldObserver({
 })
 
 // The switches in the suggestion list are the ones in Settings; flipping either changes the stored setting.
-const toggleSetting = (key: ToggleSettingKey) => () => updateSettings({ [key]: !settings[key] }).catch(() => {})
-const toggleAiShortcut = toggleSetting('isAiShortcutEnabled')
-const toggleCloseOnAccept = toggleSetting('isCloseOnAcceptEnabled')
+const toggleSetting = (key: ToggleSettingKey) => () => sendMessage(MESSAGE_TYPES.setToggleSetting, { key, isEnabled: !settings[key] }).catch(() => {})
+const toggleAiShortcut = toggleSetting(TOGGLE_SETTING_KEYS.aiShortcut)
+const toggleCloseOnAccept = toggleSetting(TOGGLE_SETTING_KEYS.closeOnAccept)
 
 // While paused the page has no listeners at all: nothing is watched, rather than being watched and ignored.
 const applySettings = (newSettings: Settings): void => {
@@ -91,15 +89,41 @@ const applySettings = (newSettings: Settings): void => {
   else inputFieldObserver.stop()
 }
 
-const handleSettingsChanged = (newSettings: Settings, previous: Settings): void => {
+const handleSettingsChanged = (newSettings: Settings): void => {
+  const previous = settings
   applySettings(newSettings)
   if (CHECK_SETTINGS.some((key) => newSettings[key] !== previous[key])) textChangeDetector.recheck()
 }
 
-// What each keyboard shortcut, relayed by the service worker, asks the page to do.
-const SHORTCUT_HANDLERS: Record<CommandMessageType, () => void> = {
+// Counts the changes the service worker sent, so the answer to an earlier request never undoes a newer change.
+let settingsChangeCount = 0
+
+// Content scripts cannot read storage, so they ask the service worker. Without settings nothing is watched, so a
+// failed request leaves the page as it was.
+const requestSettings = (onSettings: (settings: Settings) => void): void => {
+  const changeCountAtRequest = settingsChangeCount
+  sendMessage(MESSAGE_TYPES.getSettings)
+    .then((newSettings) => {
+      if (settingsChangeCount === changeCountAtRequest) onSettings(newSettings)
+    })
+    .catch((error: Error) => devLog('Settings unavailable', () => ({ reason: error.message })))
+}
+
+// What each message from the service worker asks the page to do: a relayed keyboard shortcut, or new settings.
+const PAGE_MESSAGE_HANDLERS: Record<PageMessageType, (payload: PageMessage['payload']) => void> = {
   [MESSAGE_TYPES.openSuggestion]: () => inlineSuggestions.openFromKeyboard(),
   [MESSAGE_TYPES.openAllSuggestions]: () => inlineSuggestions.openAllFromKeyboard(),
+  [MESSAGE_TYPES.settingsChanged]: (payload) => {
+    if (!payload?.settings) return
+    settingsChangeCount += 1
+    handleSettingsChanged(payload.settings)
+  },
+}
+
+// The service worker only reaches the page a tab is showing. A page restored from the back/forward cache, or shown after
+// being prerendered, missed the changes made meanwhile.
+const handlePageShow = (event: PageTransitionEvent) => {
+  if (event.persisted) requestSettings(handleSettingsChanged)
 }
 
 const DEFAULT_SHORTCUTS = getDefaultShortcuts()
@@ -117,10 +141,11 @@ const handleShortcutFallback = (event: KeyboardEvent) => {
 // A page can match both the manifest and a site the user added, which would otherwise run this script twice.
 if (!globalThis.writeBetterStarted) {
   globalThis.writeBetterStarted = true
-  chrome.runtime.onMessage.addListener((message: { type?: unknown } | null | undefined) => {
-    lookup(SHORTCUT_HANDLERS, message?.type)?.()
+  chrome.runtime.onMessage.addListener((message: Partial<PageMessage> | null | undefined) => {
+    lookup(PAGE_MESSAGE_HANDLERS, message?.type)?.(message?.payload)
   })
   addEventListener('keydown', handleShortcutFallback, true)
-  onSettingsChanged(handleSettingsChanged)
-  getSettings().then(applySettings)
+  addEventListener('pageshow', handlePageShow)
+  document.addEventListener('prerenderingchange', () => requestSettings(handleSettingsChanged))
+  requestSettings(applySettings)
 }

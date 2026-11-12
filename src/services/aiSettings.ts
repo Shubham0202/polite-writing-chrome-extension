@@ -1,7 +1,7 @@
 import { AI_PROVIDERS, AI_PROVIDER_DEFAULT_MODEL, API_KEY_SLOTS, DEFAULT_AI_SETTINGS, type AiProvider, type AiSettings, type ApiKeySlot } from '../constants/ai.ts'
 import { onStorageValueChanged } from './storageChanges.ts'
 
-// Kept apart from the other settings on purpose: the content script reads those, and it must never hold the API key.
+// Kept apart from the other settings on purpose: content scripts are sent those, and must never get the API key.
 const STORAGE_KEY = 'aiSettings'
 // Kept apart from the keys on purpose: the service worker changes it during a rewrite, and writing the whole settings
 // entry there could undo keys saved in Settings at that same moment.

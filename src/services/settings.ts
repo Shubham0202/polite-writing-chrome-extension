@@ -1,4 +1,4 @@
-import { BUILT_IN_SITES, DEFAULT_SETTINGS, type Settings } from '../constants/settings.ts'
+import { BUILT_IN_SITES, DEFAULT_SETTINGS, TOGGLE_SETTING_KEYS, type Settings, type ToggleSettingKey } from '../constants/settings.ts'
 import { matchesSite } from '../utils/siteMatch.ts'
 import { onStorageValueChanged } from './storageChanges.ts'
 
@@ -22,6 +22,8 @@ export const updateSettings = async (changes: Partial<Settings>): Promise<void> 
 
 export const onSettingsChanged = (listener: (settings: Settings, previous: Settings) => void): (() => void) =>
   onStorageValueChanged<Partial<Settings>>(STORAGE_KEY, (newValue, oldValue) => listener(normalizeSettings(newValue), normalizeSettings(oldValue)))
+
+export const isToggleSettingKey = (key: unknown): key is ToggleSettingKey => Object.values<unknown>(TOGGLE_SETTING_KEYS).includes(key)
 
 export const isSiteListed = ({ customSites }: Settings, hostname: string): boolean =>
   [...BUILT_IN_SITES.map((site) => site.hostname), ...customSites].some((site) => matchesSite(site, hostname))

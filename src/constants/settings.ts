@@ -32,6 +32,14 @@ export interface Settings {
   isLocalLanguageToolEnabled: boolean
 }
 
+// The switches in the suggestion list on websites: the only settings a content script may change.
+export const TOGGLE_SETTING_KEYS = Object.freeze({
+  aiShortcut: 'isAiShortcutEnabled',
+  closeOnAccept: 'isCloseOnAcceptEnabled',
+})
+
+export type ToggleSettingKey = (typeof TOGGLE_SETTING_KEYS)[keyof typeof TOGGLE_SETTING_KEYS]
+
 // A LanguageTool server the user runs on this computer. Its permission is optional and asked for only when the user
 // turns the server on in Settings, since whatever program listens at this address receives the text.
 export const LOCAL_LANGUAGE_TOOL = Object.freeze({

@@ -7,6 +7,7 @@ import {
   isAssistanceActive,
   isSiteListed,
   isSitePaused,
+  isToggleSettingKey,
   normalizeSettings,
   onSettingsChanged,
   parseSiteInput,
@@ -127,6 +128,18 @@ describe('settings', () => {
       assert.equal(isAssistanceActive(settingsWith({ isInlineEnabled: false }), 'mail.google.com'), false)
       assert.equal(isAssistanceActive(settingsWith({ pausedSites: ['mail.google.com'] }), 'mail.google.com'), false)
       assert.equal(isAssistanceActive(settingsWith(), 'example.com'), false)
+    })
+  })
+
+  describe('switches a website may change', () => {
+    it('allows the two switches in the suggestion list', () => {
+      for (const key of ['isAiShortcutEnabled', 'isCloseOnAcceptEnabled']) assert.equal(isToggleSettingKey(key), true, key)
+    })
+
+    it('refuses every other setting, and anything that is not a setting name', () => {
+      for (const key of ['isInlineEnabled', 'isLocalLanguageToolEnabled', 'customSites', 'pausedSites', 'aiShortcutStyle', 'constructor', 'toString', '', undefined, null, 1]) {
+        assert.equal(isToggleSettingKey(key), false, String(key))
+      }
     })
   })
 

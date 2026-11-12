@@ -22,6 +22,8 @@ const devLogTreeshake = (mode) => (isDevelopment(mode) ? true : { manualPureFunc
 // The page scripts run inside websites, so a release build must not print anything there. Only calls count: an address
 // such as console.groq.com is not one.
 const CONSOLE_CALL_PATTERN = /\bconsole\.[a-z]+\(/
+// The service worker closes storage to content scripts, because it holds the AI keys; a page script using it would fail.
+const STORAGE_PATTERN = /\bchrome\.storage\b/
 // The budgets are for what users get. A development build also carries the logging, so it gets this much more; an engine
 // imported by mistake is tens of kilobytes and still fails both.
 const DEV_LOG_ALLOWANCE_BYTES = 2_000
@@ -61,6 +63,7 @@ const pageScripts = (mode) => {
         const budget = isDevelopment(mode) ? budgetBytes + DEV_LOG_ALLOWANCE_BYTES : budgetBytes
         if (size > budget) this.error(`${fileName} is ${size} bytes, over its budget of ${budget} bytes.`)
         if (!isDevelopment(mode) && CONSOLE_CALL_PATTERN.test(source)) this.error(`${fileName} still calls console in a release build.`)
+        if (STORAGE_PATTERN.test(source)) this.error(`${fileName} uses chrome.storage, which content scripts cannot reach. Send a message to the service worker instead.`)
         this.emitFile({ type: 'asset', fileName, source })
       }
     },
