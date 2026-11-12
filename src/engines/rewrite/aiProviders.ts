@@ -147,10 +147,19 @@ const readChatCompletionText = (body: ProviderResponseBody | null): string | und
   return typeof content === 'string' ? content : undefined
 }
 
+interface ChatCompletionSampling {
+  temperature?: number
+}
+
 // Groq and OpenRouter both speak the OpenAI chat-completions dialect. JSON mode needs the word JSON in the prompt,
-// which the rewrite prompt provides. No sampling parameters are sent: reasoning models reject any temperature but
-// their own default, and the system rules and examples are what keep the output steady.
-const buildChatCompletionRequest = (url: string, headers: Record<string, string>, { apiKey, model, prompt }: AiRewriteInput): ProviderRequest => ({
+// which the rewrite prompt provides. Sampling parameters are opt-in per provider: reasoning models reject any
+// temperature but their own default, so a provider that would pass one straight through gets none.
+const buildChatCompletionRequest = (
+  url: string,
+  headers: Record<string, string>,
+  { apiKey, model, prompt }: AiRewriteInput,
+  sampling: ChatCompletionSampling = {},
+): ProviderRequest => ({
   url,
   headers: { ...JSON_HEADERS, Authorization: `Bearer ${apiKey}`, ...headers },
   body: {
@@ -160,6 +169,7 @@ const buildChatCompletionRequest = (url: string, headers: Record<string, string>
       { role: 'user', content: prompt.user },
     ],
     response_format: { type: 'json_object' },
+    ...sampling,
   },
 })
 
@@ -184,8 +194,11 @@ const PROVIDERS: Record<AiProvider, ProviderDefinition> = {
     buildRequest: (request: AiRewriteInput): ProviderRequest => buildChatCompletionRequest(`${AI_PROVIDER_ORIGIN[AI_PROVIDERS.groq]}/openai/v1/chat/completions`, {}, request),
     readText: readChatCompletionText,
   },
+  // A low temperature keeps the rewrite close to the text. OpenRouter's providers ignore a parameter they do not
+  // support (require_parameters is off by default), so no model there is refused because of it.
   [AI_PROVIDERS.openRouter]: {
-    buildRequest: (request: AiRewriteInput): ProviderRequest => buildChatCompletionRequest(`${AI_PROVIDER_ORIGIN[AI_PROVIDERS.openRouter]}/api/v1/chat/completions`, { 'X-Title': 'WriteBetter' }, request),
+    buildRequest: (request: AiRewriteInput): ProviderRequest =>
+      buildChatCompletionRequest(`${AI_PROVIDER_ORIGIN[AI_PROVIDERS.openRouter]}/api/v1/chat/completions`, { 'X-Title': 'WriteBetter' }, request, { temperature: 0.2 }),
     readText: readChatCompletionText,
   },
 }

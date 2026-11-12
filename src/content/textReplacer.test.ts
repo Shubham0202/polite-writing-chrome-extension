@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { AtomRange } from './fieldText.ts'
-import { isSameText, narrowToChange, shiftCaret, splitAroundAtoms } from './textReplacer.ts'
+import { findEditablePositions, type AtomRange, type EditableTextMap } from './fieldText.ts'
+import { isSameText, narrowToChange, shiftCaret, splitAroundAtoms, widenToTextNodes, type EditRange } from './textReplacer.ts'
 
 describe('caret after a replacement', () => {
   it('stays put before the change', () => {
@@ -96,6 +96,54 @@ describe('narrowing an edit to what changes', () => {
   it('keeps an insertion and a deletion as they are', () => {
     assert.deepEqual(narrowToChange('send it', { start: 7, end: 7, replacement: '.' }), { start: 7, end: 7, replacement: '.' })
     assert.deepEqual(narrowToChange('send it it', { start: 7, end: 10, replacement: '' }), { start: 7, end: 10, replacement: '' })
+  })
+})
+
+describe('moving an edit off a line break that has no text node', () => {
+  // One text node per line, as paragraphs or <br> leave them: the line breaks between them belong to no node.
+  const toTextMap = (lines: string[]): EditableTextMap => {
+    let start = 0
+    const textNodes = lines.flatMap((line) => {
+      const entry = line ? [{ node: { nodeValue: line } as Text, start }] : []
+      start += line.length + 1
+      return entry
+    })
+    return { text: lines.join('\n'), textNodes, atoms: [] }
+  }
+  const apply = (text: string, { start, end, replacement }: EditRange) => text.slice(0, start) + replacement + text.slice(end)
+  const widenRewrite = (textMap: EditableTextMap, rewritten: string) => widenToTextNodes(textMap, narrowToChange(textMap.text, { start: 0, end: textMap.text.length, replacement: rewritten }))
+
+  it('takes in the character before a change that starts on a line break, so the edit can be selected', () => {
+    const textMap = toTextMap(['Hi team', 'the build is passed'])
+    const rewritten = 'Hi team,\nThe build has passed.'
+    assert.equal(findEditablePositions(textMap, 7, 27), null, 'the narrowed change alone starts on the line break')
+
+    const edit = widenRewrite(textMap, rewritten)
+    assert.deepEqual(edit, { start: 6, end: 27, replacement: 'm,\nThe build has passed.' })
+    assert.ok(findEditablePositions(textMap, edit.start, edit.end))
+    assert.equal(apply(textMap.text, edit), rewritten)
+  })
+
+  it('crosses an empty line, and takes in the character after a change that ends on a line break', () => {
+    for (const [lines, rewritten] of [
+      [['Hello', '', 'world'], 'Hello\nWorld'],
+      [['Hi team', 'please check'], 'Hi team, please check'],
+    ] satisfies Array<[string[], string]>) {
+      const textMap = toTextMap(lines)
+      const edit = widenRewrite(textMap, rewritten)
+      assert.ok(findEditablePositions(textMap, edit.start, edit.end), rewritten)
+      assert.equal(apply(textMap.text, edit), rewritten)
+    }
+  })
+
+  it('leaves an edit inside text, and an insertion, as they are', () => {
+    const textMap = toTextMap(['hi team', 'the build'])
+    for (const edit of [
+      { start: 0, end: 1, replacement: 'H' },
+      { start: 7, end: 7, replacement: ',' },
+    ]) {
+      assert.deepEqual(widenToTextNodes(textMap, edit), edit)
+    }
   })
 })
 

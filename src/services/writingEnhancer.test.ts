@@ -79,8 +79,8 @@ describe('writing enhancer', () => {
     assert.equal(call.model, AI_PROVIDER_DEFAULT_MODEL[AI_PROVIDERS.gemini])
     assert.equal(call.signal, controller.signal)
     assert.match(call.prompt.system, /Rules:/)
-    assert.match(call.prompt.user, /^Style: Make professional/)
-    assert.ok(call.prompt.user.endsWith(`<text>\n${EXAMPLE}\n</text>`))
+    assert.match(call.prompt.system, /Requested style: Make professional\n/)
+    assert.equal(call.prompt.user, `<text>\n${EXAMPLE}\n</text>`)
 
     const custom = createEnhancer(EXAMPLE_REWRITE, { ...SETTINGS, provider: AI_PROVIDERS.groq, apiKey: 'gsk', model: 'qwen/qwen3.8-27b' })
     await custom.rewrite({ text: EXAMPLE, style: REWRITE_STYLES.polite })

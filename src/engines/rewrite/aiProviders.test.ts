@@ -16,6 +16,7 @@ interface RecordedBody {
   model: unknown
   messages: unknown
   response_format: unknown
+  temperature: unknown
   systemInstruction: unknown
   contents: unknown
   generationConfig: { responseMimeType: unknown; responseJsonSchema: { required: unknown } }
@@ -82,7 +83,7 @@ describe('AI providers', () => {
     assert.equal(await request(AI_PROVIDERS.gemini), '{"rewritten": "Done."}')
   })
 
-  it('calls Groq and OpenRouter as OpenAI-compatible chat completions in JSON mode, without sampling parameters', async () => {
+  it('calls Groq and OpenRouter as OpenAI-compatible chat completions in JSON mode, with a low temperature only on OpenRouter', async () => {
     const groqCalls = mockFetch(Response.json(chatReply(REPLY)))
     assert.equal(await request(AI_PROVIDERS.groq), REPLY)
     const [{ url: groqUrl, init: groqInit, body: groqBody }] = groqCalls
@@ -102,7 +103,7 @@ describe('AI providers', () => {
     assert.equal(url, 'https://openrouter.ai/api/v1/chat/completions')
     assert.equal(init.headers.Authorization, 'Bearer sk-test')
     assert.equal(init.headers['X-Title'], 'WriteBetter')
-    assert.equal('temperature' in body, false)
+    assert.equal(body.temperature, 0.2)
     assert.deepEqual(body.response_format, { type: 'json_object' })
   })
 

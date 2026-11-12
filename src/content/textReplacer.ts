@@ -11,6 +11,7 @@ import {
   mapEditableText,
   readFieldText,
   type AtomRange,
+  type EditableTextMap,
 } from './fieldText.ts'
 
 export interface EditRange {
@@ -181,6 +182,21 @@ export const narrowToChange = (text: string, { start, end, replacement }: EditRa
   return { start: start + change.start, end: start + change.oldEnd, replacement: replacement.slice(change.start, change.newEnd) }
 }
 
+const isLineBreakWithoutNode = ({ text, textNodes }: EditableTextMap, index: number): boolean =>
+  text[index] === '\n' && !textNodes.some(({ node, start }) => index >= start && index < start + node.nodeValue!.length)
+
+// A narrowed change can still start or end right on such a line break: a rewrite that adds a comma at the end of one
+// line and changes the next starts on it. The edit takes in the unchanged characters beside the break instead, in the
+// span and the replacement alike, so the result is the same. An insertion only needs a caret, which a node edge gives.
+export const widenToTextNodes = (textMap: EditableTextMap, { start, end, replacement }: EditRange): EditRange => {
+  if (start === end) return { start, end, replacement }
+  let from = start
+  let to = end
+  while (from > 0 && isLineBreakWithoutNode(textMap, from)) from -= 1
+  while (to < textMap.text.length && isLineBreakWithoutNode(textMap, to - 1)) to += 1
+  return { start: from, end: to, replacement: textMap.text.slice(from, start) + replacement + textMap.text.slice(end, to) }
+}
+
 // Goes through the browser's edit command, so the page gets a normal input event and Ctrl+Z can undo it. Resolves to
 // whether the field really ended up with the expected text.
 const replaceSpan = async <Kind extends FieldKind>({ field, kind, caret, start, end, replacement }: FieldEdit<Kind>): Promise<boolean> => {
@@ -228,8 +244,9 @@ const replaceInParts = async <Kind extends FieldKind>(
 
 export const replaceFieldText = async (edit: FieldEdit): Promise<boolean> => {
   if (edit.kind !== FIELD_KINDS.contentEditable) return replaceSpan(edit)
-  const { text, atoms } = mapEditableText(edit.field)
-  const parts = splitAroundAtoms(text, atoms, edit.start, edit.end, edit.replacement)?.map((part) => narrowToChange(text, part))
+  const textMap = mapEditableText(edit.field)
+  const { text, atoms } = textMap
+  const parts = splitAroundAtoms(text, atoms, edit.start, edit.end, edit.replacement)?.map((part) => widenToTextNodes(textMap, narrowToChange(text, part)))
   if (!parts) {
     devLog('Edit failed: it would drop or cut through a mention or emoji', () => ({ range: `${edit.start}–${edit.end}` }))
     return false
