@@ -22,6 +22,7 @@
   --wb-pressed-text: var(--color-brand-100);
   --wb-removed: var(--color-rose-300);
   --wb-added: var(--color-emerald-300);
+  --wb-warning: var(--color-amber-300);
   --wb-shadow-color: rgb(0 0 0 / 0.5);
   --wb-color-scheme: dark;
 }
@@ -262,6 +263,39 @@ button:focus-visible {
   font-size: 13px;
 }
 
+.wb-card__status--warning {
+  color: var(--wb-warning, var(--color-amber-800));
+}
+
+/* The AI switch and style. On the single card a line sets them apart from the suggestion. */
+.wb-card__ai {
+  align-items: center;
+}
+
+.wb-card:not(.wb-card--list) > .wb-card__ai {
+  padding-top: 8px;
+  border-top: 1px solid var(--wb-border, var(--color-slate-200));
+}
+
+.wb-card__style {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  color: var(--wb-text-muted, var(--color-slate-600));
+  font-size: 12px;
+}
+
+.wb-select {
+  padding: 3px 6px;
+  border: 1px solid var(--wb-control-border, var(--color-slate-300));
+  border-radius: var(--wb-radius);
+  color: var(--wb-text, var(--color-slate-700));
+  background: var(--wb-surface, var(--color-white));
+  font: inherit;
+  font-size: 13px;
+}
+
 .wb-spinner {
   flex-shrink: 0;
   width: 14px;
@@ -295,7 +329,8 @@ button:focus-visible {
 
   .wb-badge,
   .wb-toast,
-  .wb-button {
+  .wb-button,
+  .wb-select {
     border: 1px solid ButtonText;
   }
 }

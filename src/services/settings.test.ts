@@ -7,11 +7,11 @@ import {
   isAssistanceActive,
   isSiteListed,
   isSitePaused,
-  isToggleSettingKey,
   normalizeSettings,
   onSettingsChanged,
   parseSiteInput,
   setSitePaused,
+  toCardSettingChange,
   toMatchPattern,
   updateSettings,
 } from './settings.ts'
@@ -131,14 +131,28 @@ describe('settings', () => {
     })
   })
 
-  describe('switches a website may change', () => {
-    it('allows the two switches in the suggestion list', () => {
-      for (const key of ['isAiShortcutEnabled', 'isCloseOnAcceptEnabled']) assert.equal(isToggleSettingKey(key), true, key)
+  describe('settings a website may change', () => {
+    it('allows the two switches of the suggestion card, with a true or false value', () => {
+      for (const key of ['isAiShortcutEnabled', 'isCloseOnAcceptEnabled']) {
+        assert.deepEqual(toCardSettingChange(key, true), { [key]: true }, key)
+        assert.deepEqual(toCardSettingChange(key, false), { [key]: false }, key)
+      }
+    })
+
+    it('allows every AI rewrite style, and no other value for it', () => {
+      for (const style of ['improve-wording', 'professional', 'polite', 'concise', 'friendly', 'clarity']) {
+        assert.deepEqual(toCardSettingChange('aiShortcutStyle', style), { aiShortcutStyle: style }, style)
+      }
+      for (const value of ['rude', '', 'Polite', true, null, undefined]) assert.equal(toCardSettingChange('aiShortcutStyle', value), null, String(value))
+    })
+
+    it('refuses a switch with a value that is not true or false', () => {
+      for (const value of ['yes', 1, null, undefined, {}]) assert.equal(toCardSettingChange('isAiShortcutEnabled', value), null, String(value))
     })
 
     it('refuses every other setting, and anything that is not a setting name', () => {
-      for (const key of ['isInlineEnabled', 'isLocalLanguageToolEnabled', 'customSites', 'pausedSites', 'aiShortcutStyle', 'constructor', 'toString', '', undefined, null, 1]) {
-        assert.equal(isToggleSettingKey(key), false, String(key))
+      for (const key of ['isInlineEnabled', 'isLocalLanguageToolEnabled', 'customSites', 'pausedSites', 'delayMs', 'constructor', 'toString', '', undefined, null, 1]) {
+        assert.equal(toCardSettingChange(key, true), null, String(key))
       }
     })
   })

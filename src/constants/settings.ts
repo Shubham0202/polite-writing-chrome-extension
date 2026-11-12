@@ -32,13 +32,17 @@ export interface Settings {
   isLocalLanguageToolEnabled: boolean
 }
 
-// The switches in the suggestion list on websites: the only settings a content script may change.
-export const TOGGLE_SETTING_KEYS = Object.freeze({
+// The settings the suggestion card on websites shows: the only ones a content script may change.
+export const CARD_SETTING_KEYS = Object.freeze({
   aiShortcut: 'isAiShortcutEnabled',
+  aiShortcutStyle: 'aiShortcutStyle',
   closeOnAccept: 'isCloseOnAcceptEnabled',
 })
 
-export type ToggleSettingKey = (typeof TOGGLE_SETTING_KEYS)[keyof typeof TOGGLE_SETTING_KEYS]
+export type CardSettingKey = (typeof CARD_SETTING_KEYS)[keyof typeof CARD_SETTING_KEYS]
+
+// One of those settings with a value of its own type, as the card asks for it.
+export type CardSettingChange = { [Key in CardSettingKey]: { key: Key; value: Settings[Key] } }[CardSettingKey]
 
 // A LanguageTool server the user runs on this computer. Its permission is optional and asked for only when the user
 // turns the server on in Settings, since whatever program listens at this address receives the text.

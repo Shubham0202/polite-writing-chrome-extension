@@ -91,7 +91,7 @@ describe('lazy inline suggestions', () => {
 
   it('loads the UI for the shortcut while AI rewriting is on, and hands it the AI settings first', async () => {
     const lazy = createLazy()
-    const aiShortcut: AiShortcutConfig = { isEnabled: true, style: 'polite', onToggle: () => {} }
+    const aiShortcut: AiShortcutConfig = { isEnabled: true, style: 'polite', isConfigured: true, onToggle: () => {}, onStyleChange: () => {}, onOpenSettings: () => {} }
     lazy.setAiShortcut(aiShortcut)
     lazy.attach(FIELD, 'textarea')
     await lazy.openAllFromKeyboard()
@@ -123,11 +123,11 @@ describe('lazy inline suggestions', () => {
 
   it('leaves the UI unloaded for the shortcut while AI rewriting is off, or no field is active', async () => {
     const lazy = createLazy()
-    lazy.setAiShortcut({ isEnabled: false, style: 'polite', onToggle: () => {} })
+    lazy.setAiShortcut({ isEnabled: false, style: 'polite', isConfigured: true, onToggle: () => {}, onStyleChange: () => {}, onOpenSettings: () => {} })
     lazy.attach(FIELD, 'textarea')
     await lazy.openAllFromKeyboard()
     lazy.detach()
-    lazy.setAiShortcut({ isEnabled: true, style: 'polite', onToggle: () => {} })
+    lazy.setAiShortcut({ isEnabled: true, style: 'polite', isConfigured: true, onToggle: () => {}, onStyleChange: () => {}, onOpenSettings: () => {} })
     await lazy.openAllFromKeyboard()
     assert.deepEqual(messages, [])
   })

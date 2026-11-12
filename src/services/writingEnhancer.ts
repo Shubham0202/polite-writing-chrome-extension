@@ -1,4 +1,4 @@
-import { AI_PROVIDER_LABEL, API_KEY_SLOTS, type AiSettings, type ApiKeySlot, type RewriteStyle } from '../constants/ai.ts'
+import { AI_NOT_CONFIGURED_MESSAGE, AI_PROVIDER_LABEL, API_KEY_SLOTS, type AiSettings, type ApiKeySlot, type RewriteStyle } from '../constants/ai.ts'
 import { ENGINE_STATUS, REWRITE_ACTION, type EngineStatus } from '../constants/corrections.ts'
 import { AiLimitError, requestAiRewrite, type AiRewriteRequest } from '../engines/rewrite/aiProviders.ts'
 import { buildRewritePrompt, isLeakedExample, parseRewriteResponse } from '../engines/rewrite/rewritePrompt.ts'
@@ -69,7 +69,6 @@ interface RewriteResultParts {
   message?: string | null
 }
 
-const NOT_CONFIGURED_MESSAGE = 'Add an API key in Settings to rewrite with AI.'
 const UNCHANGED_MESSAGE = 'The AI found nothing to improve, so your text was left as it is.'
 const toChangedSpanMessage = (span: string): string => `The rewrite changed or dropped "${span}" from your text, so it was not used. Try again.`
 const toAddedSpanMessage = (span: string): string => `The rewrite added "${span}", which was not in your text, so it was not used. Try again.`
@@ -168,7 +167,7 @@ export const createWritingEnhancer = ({ getAiSettings, getActiveKeySlot, setActi
     const prompt = buildRewritePrompt({ text, style })
 
     const settings = await readSettings(getAiSettings)
-    if (!isAiConfigured(settings)) throw new UserFacingError(NOT_CONFIGURED_MESSAGE)
+    if (!isAiConfigured(settings)) throw new UserFacingError(AI_NOT_CONFIGURED_MESSAGE)
     const request = { provider: settings.provider, model: resolveModel(settings), prompt, signal }
     const activeKeySlot = await readActiveKeySlot(getActiveKeySlot)
     const { reply, slot } = await requestWithKeyFailover({ settings, activeKeySlot, request, requestRewrite, setActiveKeySlot })

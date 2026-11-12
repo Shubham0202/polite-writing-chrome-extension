@@ -1,10 +1,11 @@
 /** @author Shubham Chandgude <shubham826852@gmail.com> */
 
+import { REWRITE_STYLE_LABEL, REWRITE_STYLES, type RewriteStyle } from '../../constants/ai.ts'
 import { CATEGORY_LABEL, ENGINES, TONE_LABEL, TONES, type Tone } from '../../constants/corrections.ts'
 import { formatSnippet, type IdentifiedSuggestion } from '../../engines/suggestion.ts'
 import { getNavigationTarget } from './cardNavigation.ts'
 import { computeCardPosition, type CardAnchor } from './cardPosition.ts'
-import { createElement, keepFocusOnMouseDown } from './dom.ts'
+import { createElement } from './dom.ts'
 
 export const CARD_ACTIONS = Object.freeze({
   accept: 'accept',
@@ -14,17 +15,18 @@ export const CARD_ACTIONS = Object.freeze({
 
 export type CardAction = (typeof CARD_ACTIONS)[keyof typeof CARD_ACTIONS]
 
-// What the list says about the AI rewrite: that it is running, what came of it, or why it failed.
+// What a card says about the AI rewrite: that it is running, what came of it, why it failed, or that it needs a key.
 export const AI_STATUS_KINDS = Object.freeze({
   pending: 'pending',
   answer: 'answer',
   error: 'error',
+  setup: 'setup',
 })
 
 export type AiStatusKind = (typeof AI_STATUS_KINDS)[keyof typeof AI_STATUS_KINDS]
 
 export type AiStatus =
-  | { kind: typeof AI_STATUS_KINDS.pending | typeof AI_STATUS_KINDS.error; message: string }
+  | { kind: typeof AI_STATUS_KINDS.pending | typeof AI_STATUS_KINDS.error | typeof AI_STATUS_KINDS.setup; message: string }
   | { kind: typeof AI_STATUS_KINDS.answer; message: string; isEarlier: boolean; answerMessage: string | null }
 
 export interface ToggleSetting {
@@ -33,10 +35,13 @@ export interface ToggleSetting {
 }
 
 export interface AiShortcutView extends ToggleSetting {
+  style: RewriteStyle | null
+  onStyleChange: (style: RewriteStyle) => void
+  onOpenSettings: () => void
   onRegenerate: () => void
 }
 
-export interface AiListView extends AiShortcutView {
+export interface AiCardView extends AiShortcutView {
   status: AiStatus | null
 }
 
@@ -48,6 +53,7 @@ export interface SuggestionCardView {
   canAdvance: boolean
   activeTone: Tone | null | undefined
   tones: Tone[]
+  ai: AiCardView
 }
 
 export interface SuggestionCardHandlers {
@@ -59,7 +65,7 @@ export interface SuggestionCardHandlers {
 
 export interface SuggestionCard {
   render: (view: SuggestionCardView) => void
-  renderList: (suggestions: IdentifiedSuggestion[], ai: AiListView, closeOnAccept: ToggleSetting) => void
+  renderList: (suggestions: IdentifiedSuggestion[], ai: AiCardView, closeOnAccept: ToggleSetting) => void
   moveTo: (anchor: CardAnchor) => void
   hide: () => void
   focusPrimaryButton: () => void
@@ -91,24 +97,64 @@ const getItemLabel = (suggestion: IdentifiedSuggestion) => (suggestion.engine ==
 
 const describeCount = (count: number) => (count ? `${count} ${count === 1 ? 'suggestion' : 'suggestions'}` : 'No suggestions')
 
+interface AiStatusDecoration {
+  before: HTMLElement[]
+  after: HTMLElement[]
+  isWarning?: boolean
+}
+
 // A running rewrite shows a loader. An answer, new or from earlier, can be regenerated, and a failed request retried.
-const AI_STATUS_DECORATIONS: Record<AiStatusKind, (ai: AiListView) => { before: HTMLElement[]; after: HTMLElement[] }> = {
+// Without a key, the card warns and offers the way to the key field in Settings.
+const AI_STATUS_DECORATIONS: Record<AiStatusKind, (ai: AiCardView) => AiStatusDecoration> = {
   [AI_STATUS_KINDS.pending]: () => ({ before: [createElement('span', { className: 'wb-spinner', attributes: { 'aria-hidden': 'true' } })], after: [] }),
   [AI_STATUS_KINDS.answer]: ({ onRegenerate }) => ({ before: [], after: [createButton('Regenerate', onRegenerate)] }),
   [AI_STATUS_KINDS.error]: ({ onRegenerate }) => ({ before: [], after: [createButton('Try again', onRegenerate)] }),
+  [AI_STATUS_KINDS.setup]: ({ onOpenSettings }) => ({ before: [], after: [createButton('Open Settings', onOpenSettings)], isWarning: true }),
 }
 
-const createAiStatus = (ai: AiListView) => {
-  const { before, after } = AI_STATUS_DECORATIONS[ai.status!.kind](ai)
-  return createElement('div', { className: 'wb-card__status' }, [...before, createElement('span', { text: ai.status!.message }), ...after])
+const createAiStatus = (ai: AiCardView) => {
+  const { before, after, isWarning } = AI_STATUS_DECORATIONS[ai.status!.kind](ai)
+  return createElement('div', { className: isWarning ? 'wb-card__status wb-card__status--warning' : 'wb-card__status' }, [
+    ...before,
+    createElement('span', { text: ai.status!.message }),
+    ...after,
+  ])
+}
+
+const createStylePicker = ({ style, onStyleChange }: Pick<AiCardView, 'style' | 'onStyleChange'>) => {
+  const select = createElement(
+    'select',
+    { className: 'wb-select', attributes: { 'aria-label': 'AI rewrite style' } },
+    Object.values(REWRITE_STYLES).map((value) => createElement('option', { text: REWRITE_STYLE_LABEL[value], attributes: { value } })),
+  ) as HTMLSelectElement
+  select.value = style ?? REWRITE_STYLES.improveWording
+  select.addEventListener('change', () => onStyleChange(select.value as RewriteStyle))
+  return select
+}
+
+// The same switch and style as in Settings, on both cards, so the AI can be found without knowing the shortcut. The
+// label and its dropdown wrap to the next line together on the narrow single card.
+const createAiRow = (ai: AiCardView) =>
+  createElement('div', { className: 'wb-card__row wb-card__ai' }, [
+    createButton(AI_TOGGLE_LABEL, ai.onToggle, { isPressed: ai.isEnabled }),
+    createElement('span', { className: 'wb-card__style' }, [createElement('span', { text: 'Style', attributes: { 'aria-hidden': 'true' } }), createStylePicker(ai)]),
+  ])
+
+const createAiSection = (ai: AiCardView) => [createAiRow(ai), ...(ai.status ? [createAiStatus(ai)] : [])]
+
+// Pressing the mouse on the card leaves focus and the caret in the user's field; only a dropdown needs the press to open.
+const keepFieldFocusOnMouseDown = (event: MouseEvent) => {
+  if ((event.target as Element).localName !== 'select') event.preventDefault()
 }
 
 export const createSuggestionCard = (parent: ParentNode, { onAction, onChoose, onNext, onTone }: SuggestionCardHandlers): SuggestionCard => {
   const card = createElement('div', { className: 'wb-card', attributes: { role: 'dialog', 'aria-label': 'Writing suggestion', hidden: '' } })
-  keepFocusOnMouseDown(card)
+  card.addEventListener('mousedown', keepFieldFocusOnMouseDown)
   parent.append(card)
 
-  const getButtons = (): HTMLElement[] => [...card.querySelectorAll('button')]
+  // The style dropdown is a control like the buttons: Tab and the arrow keys move to and from it, so arrows on it never
+  // change the style (each change asks the AI); Space or Alt+Down opens it.
+  const getButtons = (): HTMLElement[] => [...card.querySelectorAll<HTMLElement>('button, select')]
   const getFocusedElement = () => (card.getRootNode() as ShadowRoot).activeElement as HTMLElement
 
   const trapTab = (event: KeyboardEvent) => {
@@ -121,10 +167,14 @@ export const createSuggestionCard = (parent: ParentNode, { onAction, onChoose, o
   }
   card.addEventListener('keydown', trapTab)
 
-  // Each element holding buttons is one row: the AI switch, the AI row, and each suggestion's actions.
+  // Each element holding buttons is one row: the header, the AI row, the AI status, and each suggestion's actions. The
+  // style dropdown sits in a wrapper of its own but belongs to the AI row.
   const getButtonRows = () => {
-    const rows = new Map<HTMLElement | null, HTMLElement[]>()
-    getButtons().forEach((button) => rows.set(button.parentElement, [...(rows.get(button.parentElement) ?? []), button]))
+    const rows = new Map<Element | null, HTMLElement[]>()
+    getButtons().forEach((button) => {
+      const row = button.closest('.wb-card__row') ?? button.parentElement
+      rows.set(row, [...(rows.get(row) ?? []), button])
+    })
     return [...rows.values()]
   }
 
@@ -213,20 +263,18 @@ export const createSuggestionCard = (parent: ParentNode, { onAction, onChoose, o
       createElement('p', { className: 'wb-card__explanation', text: view.suggestion.explanation }),
       createActions(view, onAction),
       ...createTones(view),
+      ...createAiSection(view.ai),
     ])
 
-  // Every suggestion at once, each with its own buttons. The header carries the AI rewrite switch, and the row under
-  // it the state of the current AI request, if there is one.
-  const renderList = (suggestions: IdentifiedSuggestion[], ai: AiListView, closeOnAccept: ToggleSetting) =>
+  // Every suggestion at once, each with its own buttons. Under the header come the AI switch and style, and the state
+  // of the current AI request, if there is one.
+  const renderList = (suggestions: IdentifiedSuggestion[], ai: AiCardView, closeOnAccept: ToggleSetting) =>
     replaceContents(true, [
       createElement('div', { className: 'wb-card__header' }, [
         createElement('span', { className: 'wb-card__label', text: describeCount(suggestions.length) }),
-        createElement('div', { className: 'wb-card__row' }, [
-          createButton(AI_TOGGLE_LABEL, ai.onToggle, { isPressed: ai.isEnabled }),
-          createButton(CLOSE_ON_ACCEPT_LABEL, closeOnAccept.onToggle, { isPressed: closeOnAccept.isEnabled }),
-        ]),
+        createButton(CLOSE_ON_ACCEPT_LABEL, closeOnAccept.onToggle, { isPressed: closeOnAccept.isEnabled }),
       ]),
-      ...(ai.status ? [createAiStatus(ai)] : []),
+      ...createAiSection(ai),
       ...suggestions.map((suggestion) =>
         createElement('div', { className: 'wb-card__item' }, [
           createHeader({ suggestion }),

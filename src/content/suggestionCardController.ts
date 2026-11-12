@@ -7,7 +7,7 @@ import type { InlineSession } from './inlineSuggestionManager.ts'
 import type { CardActionRequest } from './suggestionActions.ts'
 import type { CardSource } from './suggestionOpeners.ts'
 import { findRewrite, getListItems, getSuggestionKey } from './suggestionState.ts'
-import { CARD_ACTIONS, createSuggestionCard, type AiShortcutView, type CardAction, type ToggleSetting } from './ui/suggestionCard.ts'
+import { CARD_ACTIONS, createSuggestionCard, type AiCardView, type AiShortcutView, type CardAction, type ToggleSetting } from './ui/suggestionCard.ts'
 
 const CARD_LAYOUTS = Object.freeze({
   single: 'single',
@@ -74,8 +74,12 @@ export const createSuggestionCardController = ({ parent, host, getSession, getAn
   let listeners: AbortController | null = null
   let restoreSelection: (() => void) | null = null
   let renderedList: string | null = null
+  let renderedSingleAi: string | null = null
 
   const isList = (): boolean => open?.layout === CARD_LAYOUTS.list
+  const getAiView = (): AiCardView => ({ ...getAiShortcut(), status: getSession().aiStatus })
+  // What the AI part of a card shows, so a card is only rebuilt when that has changed.
+  const describeAiView = ({ isEnabled, style, status }: AiCardView) => [String(isEnabled), style, status?.kind, status?.message].join('\n')
   const getItem = () => open!.items[open!.index]
   const getToneAlternatives = () => getSession().state!.toneAlternatives
 
@@ -93,6 +97,7 @@ export const createSuggestionCardController = ({ parent, host, getSession, getAn
     listeners!.abort()
     open = null
     renderedList = null
+    renderedSingleAi = null
     card.hide()
     if (hadFocus) {
       getSession().field.focus()
@@ -104,6 +109,8 @@ export const createSuggestionCardController = ({ parent, host, getSession, getAn
 
   const show = ({ moveFocus = false }: { moveFocus?: boolean } = {}) => {
     const suggestion = getOpenSuggestion()!
+    const ai = getAiView()
+    renderedSingleAi = describeAiView(ai)
     card.render({
       suggestion,
       choice: open!.choice,
@@ -111,6 +118,7 @@ export const createSuggestionCardController = ({ parent, host, getSession, getAn
       canAdvance: open!.items.length > 1,
       activeTone: open!.tone,
       tones: Object.values(TONES).filter((tone) => findRewrite(getToneAlternatives(), getItem(), tone)),
+      ai,
     })
     onChange()
     if (moveFocus) card.focusPrimaryButton()
@@ -123,14 +131,12 @@ export const createSuggestionCardController = ({ parent, host, getSession, getAn
     const suggestions = state ? getListItems(state).map((item) => resolveSuggestion(item, getStartingTone(item))) : []
     if (!suggestions.length && !aiStatus) return close()
 
-    const ai = { ...getAiShortcut(), status: aiStatus }
+    const ai = getAiView()
     const closeOnAccept = getCloseOnAccept()
     // This runs on every scroll frame, so the list is only rebuilt when what it shows has changed.
     const listKey = [
-      String(ai.isEnabled),
+      describeAiView(ai),
       String(closeOnAccept.isEnabled),
-      ai.status?.kind,
-      ai.status?.message,
       ...suggestions.map((suggestion) => `${suggestion.offset}:${getSuggestionKey(suggestion)}`),
     ].join('\n\n')
     if (listKey !== renderedList) {
@@ -224,6 +230,8 @@ export const createSuggestionCardController = ({ parent, host, getSession, getAn
     refresh: () => {
       if (!open) return
       if (isList()) showList()
+      // The AI switch, style or notice changed while the card was open, from this tab or from Settings.
+      else if (describeAiView(getAiView()) !== renderedSingleAi) show()
       else card.moveTo(getAnchor(getOpenSuggestion()!))
     },
     // The single card's snapshot no longer matches the text; the list is re-read from the state instead.

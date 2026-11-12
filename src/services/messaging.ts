@@ -1,5 +1,5 @@
 import type { RewriteStyle } from '../constants/ai.ts'
-import type { Settings, ToggleSettingKey } from '../constants/settings.ts'
+import type { CardSettingChange, Settings } from '../constants/settings.ts'
 import type { CorrectionRequest, CorrectionResult, InlineCheckResult } from './correctionPipeline.ts'
 import type { RewriteResult } from './writingEnhancer.ts'
 
@@ -16,7 +16,8 @@ export const MESSAGE_TYPES = Object.freeze({
   cancelRewrite: 'CANCEL_REWRITE',
   runShortcutFallback: 'RUN_SHORTCUT_FALLBACK',
   getSettings: 'GET_SETTINGS',
-  setToggleSetting: 'SET_TOGGLE_SETTING',
+  updateCardSetting: 'UPDATE_CARD_SETTING',
+  openAiSettings: 'OPEN_AI_SETTINGS',
   settingsChanged: 'SETTINGS_CHANGED',
 })
 
@@ -34,9 +35,15 @@ export type CommandMessageType = (typeof COMMAND_MESSAGES)[keyof typeof COMMAND_
 // since content scripts cannot read storage. None of them has an answer.
 export type PageMessageType = CommandMessageType | typeof MESSAGE_TYPES.settingsChanged
 
+// What content scripts are told: the settings, and only whether an AI key is saved, never the key itself.
+export interface PageSettings {
+  settings: Settings
+  isAiConfigured: boolean
+}
+
 export interface PageMessage {
   type: PageMessageType
-  payload?: { settings: Settings }
+  payload?: PageSettings
 }
 
 export interface PingResult {
@@ -60,8 +67,10 @@ export interface MessageContract {
   // A page saw the default key of a shortcut that Chrome may have left unset.
   [MESSAGE_TYPES.runShortcutFallback]: { payload: { command: string }; result: void }
   // Storage holds the AI keys and is closed to content scripts, so they ask for the settings here instead.
-  [MESSAGE_TYPES.getSettings]: { payload: undefined; result: Settings }
-  [MESSAGE_TYPES.setToggleSetting]: { payload: { key: ToggleSettingKey; isEnabled: boolean }; result: void }
+  [MESSAGE_TYPES.getSettings]: { payload: undefined; result: PageSettings }
+  [MESSAGE_TYPES.updateCardSetting]: { payload: CardSettingChange; result: void }
+  // Content scripts cannot open extension pages, so the card asks for Settings, at the API key field, here.
+  [MESSAGE_TYPES.openAiSettings]: { payload: undefined; result: void }
 }
 
 export type RequestMessageType = keyof MessageContract

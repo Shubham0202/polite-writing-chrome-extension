@@ -1,7 +1,8 @@
-import { LOCAL_LANGUAGE_TOOL, type Settings } from '../constants/settings.ts'
+import { API_KEY_FIELD_ID } from '../constants/ai.ts'
+import { LOCAL_LANGUAGE_TOOL } from '../constants/settings.ts'
 import { EN_DICTIONARY } from '../engines/spelling/dictionary.ts'
 import { createSpellChecker, type SpellChecker } from '../engines/spelling/spellChecker.ts'
-import { getActiveKeySlot, getAiSettings, isAiConfigured, setActiveKeySlot } from '../services/aiSettings.ts'
+import { getActiveKeySlot, getAiSettings, isAiConfigured, onAiSettingsChanged, setActiveKeySlot } from '../services/aiSettings.ts'
 import { createCorrectionPipeline, type CorrectionRequest } from '../services/correctionPipeline.ts'
 import { injectIntoOpenTabs, syncCustomSiteScripts } from '../services/customSiteScripts.ts'
 import { addIgnoredWord, getIgnoredWords } from '../services/ignoredWords.ts'
@@ -19,12 +20,13 @@ import {
   type MessagePayload,
   type MessageSenderInfo,
   type PageMessage,
+  type PageSettings,
   type RequestMessageType,
   type SenderRole,
 } from '../services/messaging.ts'
 import { isOnlineGrammarAllowed } from '../services/onlineGrammar.ts'
 import { findSettingsWithoutAccess } from '../services/permissionSync.ts'
-import { getSettings, isToggleSettingKey, onSettingsChanged, updateSettings } from '../services/settings.ts'
+import { getSettings, onSettingsChanged, toCardSettingChange, updateSettings } from '../services/settings.ts'
 import { isShortcutUnset } from '../services/shortcuts.ts'
 import { createWritingEnhancer, type RewriteRequest } from '../services/writingEnhancer.ts'
 import { devError } from '../utils/devLog.ts'
@@ -85,7 +87,8 @@ const MESSAGE_SENDER_ROLES: Record<RequestMessageType, readonly (SenderRole | nu
   [MESSAGE_TYPES.loadInlineUi]: [SENDER_ROLES.contentScript],
   [MESSAGE_TYPES.runShortcutFallback]: [SENDER_ROLES.contentScript],
   [MESSAGE_TYPES.getSettings]: [SENDER_ROLES.contentScript],
-  [MESSAGE_TYPES.setToggleSetting]: [SENDER_ROLES.contentScript],
+  [MESSAGE_TYPES.updateCardSetting]: [SENDER_ROLES.contentScript],
+  [MESSAGE_TYPES.openAiSettings]: [SENDER_ROLES.contentScript],
 }
 
 const sendCommandToTab = (command: string, tabId: number | undefined) => {
@@ -95,10 +98,16 @@ const sendCommandToTab = (command: string, tabId: number | undefined) => {
   chrome.tabs.sendMessage(tabId, { type }).catch(() => {})
 }
 
+// A key that cannot be read counts as missing: the card then offers the way to Settings.
+const getPageSettings = async (): Promise<PageSettings> => ({
+  settings: await getSettings(),
+  isAiConfigured: await getAiSettings().then(isAiConfigured).catch(() => false),
+})
+
 // Every tab is told, rather than only those of listed sites, so a tab of a site just removed from the list hears it too
 // and stops. Tabs without a content script do not answer.
-const sendSettingsToTabs = async (settings: Settings) => {
-  const message: PageMessage = { type: MESSAGE_TYPES.settingsChanged, payload: { settings } }
+const sendPageSettingsToTabs = async () => {
+  const message: PageMessage = { type: MESSAGE_TYPES.settingsChanged, payload: await getPageSettings() }
   const tabs = await chrome.tabs.query({})
   tabs.forEach(({ id }) => {
     if (id) chrome.tabs.sendMessage(id, message).catch(() => {})
@@ -135,11 +144,17 @@ const MESSAGE_HANDLERS: MessageHandlers = {
     if (typeof payload?.command === 'string' && (await isShortcutUnset(payload.command))) sendCommandToTab(payload.command, tab?.id)
   },
   // Only the settings entry: the AI settings are stored apart and never leave the extension's own pages and this worker.
-  [MESSAGE_TYPES.getSettings]: () => getSettings(),
-  [MESSAGE_TYPES.setToggleSetting]: async (payload) => {
-    const { key, isEnabled } = payload ?? {}
-    if (!isToggleSettingKey(key) || typeof isEnabled !== 'boolean') throw new Error('This setting cannot be changed from a website.')
-    await updateSettings({ [key]: isEnabled })
+  [MESSAGE_TYPES.getSettings]: getPageSettings,
+  [MESSAGE_TYPES.updateCardSetting]: async (payload) => {
+    const change = toCardSettingChange(payload?.key, payload?.value)
+    if (!change) throw new Error('This setting cannot be changed from a website.')
+    await updateSettings(change)
+  },
+  // Next to the tab the card is in; the page focuses the field, which also scrolls it into view. An incognito window
+  // cannot hold this extension's pages, so Chrome picks a window there. Should Chrome still refuse, Settings opens anyway.
+  [MESSAGE_TYPES.openAiSettings]: async (_payload, { tab }) => {
+    const placement = tab && !tab.incognito ? { windowId: tab.windowId, index: tab.index + 1, openerTabId: tab.id } : {}
+    await chrome.tabs.create({ url: chrome.runtime.getURL(`options.html#${API_KEY_FIELD_ID}`), ...placement }).catch(() => chrome.runtime.openOptionsPage())
   },
 }
 
@@ -159,8 +174,13 @@ chrome.runtime.onInstalled.addListener(async () => {
 })
 
 onSettingsChanged((settings, previous) => {
-  sendSettingsToTabs(settings).catch(() => {})
+  sendPageSettingsToTabs().catch(() => {})
   if (settings.customSites.join() !== previous.customSites.join()) queueSiteSync()
+})
+
+// A key saved or removed in Settings changes what the card offers: the AI switch, or the way to Settings.
+onAiSettingsChanged(() => {
+  sendPageSettingsToTabs().catch(() => {})
 })
 
 // Access also changes in chrome://extensions. An added site keeps its registration while its access is gone: Chrome

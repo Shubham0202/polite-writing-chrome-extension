@@ -1,7 +1,8 @@
 import { ENGINE_STATUS } from '../constants/corrections.ts'
-import { DEFAULT_SETTINGS, TOGGLE_SETTING_KEYS, type Settings, type ToggleSettingKey } from '../constants/settings.ts'
+import type { RewriteStyle } from '../constants/ai.ts'
+import { CARD_SETTING_KEYS, DEFAULT_SETTINGS, type CardSettingChange, type Settings } from '../constants/settings.ts'
 import type { InlineCheckResult } from '../services/correctionPipeline.ts'
-import { MESSAGE_TYPES, sendMessage, type PageMessage, type PageMessageType } from '../services/messaging.ts'
+import { MESSAGE_TYPES, sendMessage, type PageMessage, type PageMessageType, type PageSettings } from '../services/messaging.ts'
 import { isAssistanceActive } from '../services/settings.ts'
 import { getDefaultShortcuts } from '../services/shortcuts.ts'
 import { watchTheme } from '../services/theme.ts'
@@ -74,25 +75,34 @@ const inputFieldObserver = createInputFieldObserver({
   onStopped: inlineSuggestions.destroy,
 })
 
-// The switches in the suggestion list are the ones in Settings; flipping either changes the stored setting.
-const toggleSetting = (key: ToggleSettingKey) => () => sendMessage(MESSAGE_TYPES.setToggleSetting, { key, isEnabled: !settings[key] }).catch(() => {})
-const toggleAiShortcut = toggleSetting(TOGGLE_SETTING_KEYS.aiShortcut)
-const toggleCloseOnAccept = toggleSetting(TOGGLE_SETTING_KEYS.closeOnAccept)
+// The switches and the AI style on the card are the ones in Settings; changing one changes the stored setting.
+const updateCardSetting = (change: CardSettingChange) => sendMessage(MESSAGE_TYPES.updateCardSetting, change).catch(() => {})
+const toggleAiShortcut = () => updateCardSetting({ key: CARD_SETTING_KEYS.aiShortcut, value: !settings.isAiShortcutEnabled })
+const toggleCloseOnAccept = () => updateCardSetting({ key: CARD_SETTING_KEYS.closeOnAccept, value: !settings.isCloseOnAcceptEnabled })
+const chooseAiShortcutStyle = (style: RewriteStyle) => updateCardSetting({ key: CARD_SETTING_KEYS.aiShortcutStyle, value: style })
+const openAiSettings = () => sendMessage(MESSAGE_TYPES.openAiSettings).catch(() => {})
 
 // While paused the page has no listeners at all: nothing is watched, rather than being watched and ignored.
-const applySettings = (newSettings: Settings): void => {
+const applySettings = ({ settings: newSettings, isAiConfigured }: PageSettings): void => {
   settings = newSettings
-  inlineSuggestions.setAiShortcut({ isEnabled: settings.isAiShortcutEnabled, style: settings.aiShortcutStyle, onToggle: toggleAiShortcut })
+  inlineSuggestions.setAiShortcut({
+    isEnabled: settings.isAiShortcutEnabled,
+    style: settings.aiShortcutStyle,
+    isConfigured: isAiConfigured,
+    onToggle: toggleAiShortcut,
+    onStyleChange: chooseAiShortcutStyle,
+    onOpenSettings: openAiSettings,
+  })
   inlineSuggestions.setCloseOnAccept({ isEnabled: settings.isCloseOnAcceptEnabled, onToggle: toggleCloseOnAccept })
   setTheme(settings.theme)
   if (isAssistanceActive(settings, getPageHostname())) inputFieldObserver.start()
   else inputFieldObserver.stop()
 }
 
-const handleSettingsChanged = (newSettings: Settings): void => {
+const handleSettingsChanged = (pageSettings: PageSettings): void => {
   const previous = settings
-  applySettings(newSettings)
-  if (CHECK_SETTINGS.some((key) => newSettings[key] !== previous[key])) textChangeDetector.recheck()
+  applySettings(pageSettings)
+  if (CHECK_SETTINGS.some((key) => pageSettings.settings[key] !== previous[key])) textChangeDetector.recheck()
 }
 
 // Counts the changes the service worker sent, so the answer to an earlier request never undoes a newer change.
@@ -100,11 +110,11 @@ let settingsChangeCount = 0
 
 // Content scripts cannot read storage, so they ask the service worker. Without settings nothing is watched, so a
 // failed request leaves the page as it was.
-const requestSettings = (onSettings: (settings: Settings) => void): void => {
+const requestSettings = (onSettings: (pageSettings: PageSettings) => void): void => {
   const changeCountAtRequest = settingsChangeCount
   sendMessage(MESSAGE_TYPES.getSettings)
-    .then((newSettings) => {
-      if (settingsChangeCount === changeCountAtRequest) onSettings(newSettings)
+    .then((pageSettings) => {
+      if (settingsChangeCount === changeCountAtRequest) onSettings(pageSettings)
     })
     .catch((error: Error) => devLog('Settings unavailable', () => ({ reason: error.message })))
 }
@@ -116,7 +126,7 @@ const PAGE_MESSAGE_HANDLERS: Record<PageMessageType, (payload: PageMessage['payl
   [MESSAGE_TYPES.settingsChanged]: (payload) => {
     if (!payload?.settings) return
     settingsChangeCount += 1
-    handleSettingsChanged(payload.settings)
+    handleSettingsChanged(payload)
   },
 }
 

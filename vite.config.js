@@ -10,7 +10,7 @@ const FIXED_NAME_ENTRIES = new Set(['serviceWorker'])
 // when there is something to show. Going over usually means an engine was imported by mistake.
 const PAGE_SCRIPTS = [
   { entry: 'src/content/main.ts', fileName: 'content.js', budgetBytes: 13_500 },
-  { entry: 'src/content/inlineUi.ts', fileName: 'inlineUi.js', budgetBytes: 38_000 },
+  { entry: 'src/content/inlineUi.ts', fileName: 'inlineUi.js', budgetBytes: 41_000 },
 ]
 
 // Development logging (src/utils/devLog.ts) is compiled in only by `npm run dev`. Any other build replaces the flag with

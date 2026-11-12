@@ -1,4 +1,6 @@
-import { BUILT_IN_SITES, DEFAULT_SETTINGS, TOGGLE_SETTING_KEYS, type Settings, type ToggleSettingKey } from '../constants/settings.ts'
+import { REWRITE_STYLES, type RewriteStyle } from '../constants/ai.ts'
+import { BUILT_IN_SITES, CARD_SETTING_KEYS, DEFAULT_SETTINGS, type CardSettingKey, type Settings } from '../constants/settings.ts'
+import { lookup } from '../utils/lookup.ts'
 import { matchesSite } from '../utils/siteMatch.ts'
 import { onStorageValueChanged } from './storageChanges.ts'
 
@@ -23,7 +25,18 @@ export const updateSettings = async (changes: Partial<Settings>): Promise<void> 
 export const onSettingsChanged = (listener: (settings: Settings, previous: Settings) => void): (() => void) =>
   onStorageValueChanged<Partial<Settings>>(STORAGE_KEY, (newValue, oldValue) => listener(normalizeSettings(newValue), normalizeSettings(oldValue)))
 
-export const isToggleSettingKey = (key: unknown): key is ToggleSettingKey => Object.values<unknown>(TOGGLE_SETTING_KEYS).includes(key)
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean'
+const isRewriteStyle = (value: unknown): value is RewriteStyle => Object.values<unknown>(REWRITE_STYLES).includes(value)
+
+const CARD_SETTING_VALIDATORS: { [Key in CardSettingKey]: (value: unknown) => value is Settings[Key] } = {
+  [CARD_SETTING_KEYS.aiShortcut]: isBoolean,
+  [CARD_SETTING_KEYS.aiShortcutStyle]: isRewriteStyle,
+  [CARD_SETTING_KEYS.closeOnAccept]: isBoolean,
+}
+
+// The change a content script asked for, or null when it names another setting or brings a value of the wrong kind.
+export const toCardSettingChange = (key: unknown, value: unknown): Partial<Settings> | null =>
+  lookup(CARD_SETTING_VALIDATORS, key)?.(value) ? ({ [key as CardSettingKey]: value } as Partial<Settings>) : null
 
 export const isSiteListed = ({ customSites }: Settings, hostname: string): boolean =>
   [...BUILT_IN_SITES.map((site) => site.hostname), ...customSites].some((site) => matchesSite(site, hostname))

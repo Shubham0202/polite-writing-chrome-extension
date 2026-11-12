@@ -1,7 +1,7 @@
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import Button from '../../components/Button.tsx'
 import Select from '../../components/Select.tsx'
-import { AI_PROVIDERS, AI_PROVIDER_DEFAULT_MODEL, AI_PROVIDER_KEY_URL, AI_PROVIDER_LABEL, AI_PROVIDER_SUGGESTED_MODELS, type AiProvider, type AiSettings } from '../../constants/ai.ts'
+import { AI_PROVIDERS, AI_PROVIDER_DEFAULT_MODEL, AI_PROVIDER_KEY_URL, AI_PROVIDER_LABEL, AI_PROVIDER_SUGGESTED_MODELS, API_KEY_FIELD_ID, type AiProvider, type AiSettings } from '../../constants/ai.ts'
 import { FORM_STATUS, useAiSettingsForm, type FormStatus } from '../hooks/useAiSettingsForm.ts'
 
 const MODEL_SUGGESTIONS_ID = 'ai-model-suggestions'
@@ -36,11 +36,13 @@ interface ApiKeyInputProps {
   placeholder: string
   isInvalid: boolean
   onChange: (value: string) => void
+  autoFocus?: boolean
 }
 
-const ApiKeyInput = ({ id, value, placeholder, isInvalid, onChange }: ApiKeyInputProps) => (
+const ApiKeyInput = ({ id, value, placeholder, isInvalid, onChange, autoFocus = false }: ApiKeyInputProps) => (
   <input
     id={id}
+    autoFocus={autoFocus}
     type="password"
     autoComplete="off"
     spellCheck={false}
@@ -61,6 +63,8 @@ const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
   const statusMessage = STATUS_MESSAGE[status](form.provider)
   const suggestedModels = AI_PROVIDER_SUGGESTED_MODELS[form.provider]
   const hasSuggestions = suggestedModels.length > 0
+  // The suggestion card on a website opens Settings at this field when no key is saved; focusing it also scrolls to it.
+  const isApiKeyRequested = location.hash === `#${API_KEY_FIELD_ID}`
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -84,8 +88,15 @@ const AiSettingsForm = ({ stored }: AiSettingsFormProps) => {
           </a>
         </div>
       </Field>
-      <Field id="ai-api-key" label="API key">
-        <ApiKeyInput id="ai-api-key" value={form.apiKey} placeholder="Paste your key" isInvalid={error?.field === 'apiKey'} onChange={(apiKey) => update({ apiKey })} />
+      <Field id={API_KEY_FIELD_ID} label="API key">
+        <ApiKeyInput
+          id={API_KEY_FIELD_ID}
+          value={form.apiKey}
+          placeholder="Paste your key"
+          isInvalid={error?.field === 'apiKey'}
+          onChange={(apiKey) => update({ apiKey })}
+          autoFocus={isApiKeyRequested}
+        />
       </Field>
       <Field id="ai-backup-api-key" label="Backup API key (optional)">
         <ApiKeyInput

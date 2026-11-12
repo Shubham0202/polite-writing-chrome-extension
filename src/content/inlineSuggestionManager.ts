@@ -1,6 +1,6 @@
 /** @author Shubham Chandgude <shubham826852@gmail.com> */
 
-import type { RewriteStyle } from '../constants/ai.ts'
+import { AI_NOT_CONFIGURED_MESSAGE, type RewriteStyle } from '../constants/ai.ts'
 import { ENGINES, TONES } from '../constants/corrections.ts'
 import type { IdentifiedSuggestion } from '../engines/suggestion.ts'
 import type { InlineCheckResult, ToneAlternatives } from '../services/correctionPipeline.ts'
@@ -48,9 +48,13 @@ export interface InlineSession {
   tracking: AbortController | null
 }
 
-// The shortcut's AI rewrite settings. The style is null until the settings have been read.
+// The shortcut's AI rewrite settings. The style is null until the settings have been read. Only whether a key is saved
+// is known here, so the card can point to Settings instead of sending a request that would fail.
 export interface AiShortcutConfig extends ToggleSetting {
   style: RewriteStyle | null
+  isConfigured: boolean
+  onStyleChange: (style: RewriteStyle) => void
+  onOpenSettings: () => void
 }
 
 interface AiRequest {
@@ -105,7 +109,7 @@ export const createInlineSuggestionManager = (): InlineSuggestionManager => {
   let frame: number | null = null
   let needsSync = false
   // The shortcut's AI rewrite: whether it is on, the style to ask for, and how to flip the switch in Settings.
-  let aiShortcut: AiShortcutConfig = { isEnabled: false, style: null, onToggle: () => {} }
+  let aiShortcut: AiShortcutConfig = { isEnabled: false, style: null, isConfigured: false, onToggle: () => {}, onStyleChange: () => {}, onOpenSettings: () => {} }
   // Whether every Accept closes the list, and how to flip that switch in Settings.
   let closeOnAccept: ToggleSetting = { isEnabled: false, onToggle: () => {} }
   // The Theme setting, already resolved from System to light or dark; the stylesheet reads it off the host.
@@ -242,8 +246,15 @@ export const createInlineSuggestionManager = (): InlineSuggestionManager => {
     if (request.moveFocus || ui.card.hasFocus()) ui.card.focusPrimaryButton()
   }
 
+  // Without a key the request could only fail, so the card shows the way to Settings instead.
+  const showAiSetup = () => {
+    setAiStatus({ kind: AI_STATUS_KINDS.setup, message: AI_NOT_CONFIGURED_MESSAGE })
+    render()
+  }
+
   // Sends the field's text for an AI rewrite. Only ever reached from an explicit key press or click.
   const startAiRewrite = ({ moveFocus = false }: { moveFocus?: boolean } = {}) => {
+    if (!aiShortcut.isConfigured) return showAiSetup()
     cancelAiRewrite()
     const text = readFieldText(session.field, session.kind)
     const request = (aiRequest = { text, style: aiShortcut.style, moveFocus })
@@ -265,6 +276,14 @@ export const createInlineSuggestionManager = (): InlineSuggestionManager => {
     // card, the rebased rest is already in the state.
     if (text === answer.text) showAiRewrites(text, answer.suggestions)
     showAiAnswer(answer, { isEarlier: true })
+  }
+
+  // The AI switch on either card. Rewrites are shown in the list, so switching on from the single card opens it; the
+  // request starts once the stored setting comes back on.
+  const toggleAiShortcut = () => {
+    if (!aiShortcut.isEnabled && !aiShortcut.isConfigured) return showAiSetup()
+    if (!aiShortcut.isEnabled && !ui.card.isListOpen()) ui.card.openAll({ source: ui.card.getSource() ?? CARD_SOURCES.badge, moveFocus: ui.card.hasFocus() })
+    aiShortcut.onToggle()
   }
 
   // Changes made on the card keep the AI's answer current; only typing makes the next shortcut ask the AI again.
@@ -339,7 +358,7 @@ export const createInlineSuggestionManager = (): InlineSuggestionManager => {
       getSession,
       getAnchor,
       getFieldAnchor: () => getVisibleBox(session.field, session.clippingAncestors!) ?? session.field.getBoundingClientRect(),
-      getAiShortcut: () => ({ isEnabled: aiShortcut.isEnabled, onToggle: aiShortcut.onToggle, onRegenerate: () => startAiRewrite({ moveFocus: ui.card.hasFocus() }) }),
+      getAiShortcut: () => ({ ...aiShortcut, onToggle: toggleAiShortcut, onRegenerate: () => startAiRewrite({ moveFocus: ui.card.hasFocus() }) }),
       getCloseOnAccept: () => closeOnAccept,
       onChange: render,
       onAction: handleCardAction,
@@ -475,15 +494,20 @@ export const createInlineSuggestionManager = (): InlineSuggestionManager => {
       if (session.state) ui.openers.openAllFromKeyboard()
     },
     setAiShortcut: (config: AiShortcutConfig) => {
-      const wasEnabled = aiShortcut.isEnabled
+      const previous = aiShortcut
       aiShortcut = config
       if (!session || !ui) return
-      if (wasEnabled && !config.isEnabled) {
+      if (previous.isEnabled && !config.isEnabled) {
         cancelAiRewrite()
         setAiStatus(null)
       }
-      // Switched on from the open list: the user is waiting for the rewrite right there.
-      if (!wasEnabled && config.isEnabled && ui.card.isListOpen()) showOrStartAiRewrite()
+      // A key saved meanwhile makes the way to Settings unnecessary.
+      if (config.isConfigured && session.aiStatus?.kind === AI_STATUS_KINDS.setup) setAiStatus(null)
+      // Switched on, or given another style, from the open list in this page: the user is waiting for the rewrite right
+      // there. Every tab hears the change, so a list left open in another tab or frame, or a change made in Settings,
+      // must not send that field's text.
+      const isNewAnswerWanted = config.isEnabled && (!previous.isEnabled || config.style !== previous.style)
+      if (isNewAnswerWanted && ui.card.isListOpen() && document.hasFocus()) showOrStartAiRewrite()
       render()
     },
     setCloseOnAccept: (config: ToggleSetting) => {
